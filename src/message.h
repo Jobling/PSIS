@@ -12,3 +12,4 @@ typedef struct message_protocol{
 } message;
 
 #endif
+
