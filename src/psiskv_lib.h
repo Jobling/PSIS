@@ -1,5 +1,5 @@
-#ifndef __PSISKV__
-#define __PSISKV__
+#ifndef __PSISKV_LIB__
+#define __PSISKV_LIB__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include "message.h"
 

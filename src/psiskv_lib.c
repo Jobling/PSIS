@@ -1,4 +1,4 @@
-#include "psiskv.h"
+#include "psiskv_lib.h"
 
 int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sockaddr_in server_addr;
@@ -28,6 +28,8 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 }
 
 void kv_close(int kv_descriptor){
+	if(close(kv_descriptor))
+		perror("close");
 	return;
 }
 
