@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include "message.h"
 
@@ -28,7 +29,7 @@ int main(){
     int nbytes;
  	struct sockaddr_in local_addr;
  	struct sockaddr_in client_addr;
-	socklen_t size_addr;
+	socklen_t addr_size;
  	
 	signal(SIGINT, sig_handler);
 	
@@ -60,31 +61,42 @@ int main(){
    while(1){
 		/* Accept first connection. Only one connection so far */
 		if(sock_in == -1){
-			sock_in = accept(listener, 
-							(const struct sockaddr *) &client_addr,
-							sizeof(client_addr));
+			addr_size = sizeof(client_addr);
+			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 		}
 		 
         /* Read message header */
         nbytes = recv(sock_in, &msg, sizeof(message), 0);
-
-        /* Process message header */
-        switch(msg.operation){
-			case(KV_READ):
-				printf("Message reading not yet implemented.\n");
-				break;
-			case(KV_WRITE):
-				printf("Message writing not yet implemented.\n");
-				break;
-			case(KV_DELETE):
-				printf("Key deletion not yet implemented.\n");
-				break;
-			default:
-				printf("Unknown message operation\n");
-				perror("message operation");
+        switch(nbytes){
+			case(-1):
+				perror("bad receive");
 				close(listener);
 				close(sock_in);
-				exit(0);
+				exit(-1);
+				break;
+			case(0):
+				close(sock_in);
+				sock_in = -1;
+				break;
+			default:
+				/* Process message header */
+				switch(msg.operation){
+					case(KV_READ):
+						printf("Message reading not yet implemented.\n");
+						break;
+					case(KV_WRITE):
+						printf("Message writing not yet implemented.\n");
+						break;
+					case(KV_DELETE):
+						printf("Key deletion not yet implemented.\n");
+						break;
+					default:
+						printf("Unknown message operation\n");
+						perror("message operation");
+						close(listener);
+						close(sock_in);
+						exit(0);
+				}	
 		}
     } 
     exit(0);

@@ -34,6 +34,19 @@ void kv_close(int kv_descriptor){
 }
 
 int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
+	message msg;
+	int nbytes;
+	
+	msg.operation = KV_WRITE;
+	msg.key = key;
+	msg.data_length = strlen(value) + 1;
+	
+	/* Send message header */
+	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+		perror("write");
+		return -1;
+	}
+	
 	return 0;
 }
 

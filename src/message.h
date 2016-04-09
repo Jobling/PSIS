@@ -7,7 +7,7 @@
 
 typedef struct message_protocol{
 	int operation;
-	int key;
+	uint32_t key;
 	int data_length;
 } message;
 
