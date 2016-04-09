@@ -130,6 +130,42 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 }
 
 int kv_delete(int kv_descriptor, uint32_t key){
-	return 0;
+	message msg;
+	int nbytes;
+	
+	/* Creating message header */
+	msg.operation = KV_DELETE;
+	msg.key = key;
+	msg.data_length = 0;
+	
+	/* Send message header */
+	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+		perror("Writing message header\n");
+		return -1;
+	}
+	
+	/* The client must receive server confirmation */
+	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+    switch(nbytes){
+		case(-1):
+			perror("Bad receive\n");
+			return -1;
+		case(0):
+			perror("Server closed socket\n");
+			return -1;
+		default:
+			/* Check for success */
+			switch(msg.operation){
+				case(KV_SUCCESS):
+					return 0;
+				case(KV_FAILURE):
+					perror("Server failure\n");
+					return -1;
+				default:
+					perror("Unknown error\n");
+					return -1;
+			}
+	}
+
 }
 
