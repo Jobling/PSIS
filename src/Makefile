@@ -5,7 +5,7 @@ DEPS = message.h psiskv_lib.h psiskv_database.h
 %.o: %.c %.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-server: psiskv_server.c $(DEPS)
+server: psiskv_server.c psiskv_database.o $(DEPS)
 	$(CC) -o server $^ $(CFLAGS)
 	
 test: psiskv_lib.o psiskv_database.o

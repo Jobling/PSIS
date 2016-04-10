@@ -138,7 +138,6 @@ void server_write(uint32_t key, int value_length){
 int main(){
     message msg;
 
-    int nbytes;
  	struct sockaddr_in client_addr;
 	socklen_t addr_size;
 
