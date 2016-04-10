@@ -10,7 +10,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	
 	/* Create socket  */ 
 	if((kv_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-		perror("Socket\n");
+		perror("Socket");
 		return(-1);
 	}
 	
@@ -18,13 +18,13 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(kv_server_port);
 	if(!inet_aton(kv_server_ip, &server_addr.sin_addr)){
-		perror("Bad address\n");
+		perror("Bad address");
 		return -1;
 	}
 	
 	/* Connect socket to server address */
 	if(connect(kv_descriptor, (const struct sockaddr *) &server_addr, sizeof(server_addr)) == -1){
-		perror("Connect\n");
+		perror("Connect");
 		return -1;
 	}
 	
@@ -34,7 +34,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 /* This function closes a previously opened key-value store's connection */
 void kv_close(int kv_descriptor){
 	if(close(kv_descriptor))
-		perror("Close\n");
+		perror("Close");
 	return;
 }
 
@@ -55,13 +55,13 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 	
 	/* Send message header */
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing message header\n");
+		perror("Writing message header");
 		return -1;
 	}
 	
 	/* Send message content */
 	if((nbytes = send(kv_descriptor, value, msg.data_length, 0)) == -1){
-		perror("Writing message content\n");
+		perror("Writing message content");
 		return -1;
 	}
 	
@@ -69,10 +69,10 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
     switch(nbytes){
 		case(-1):
-			perror("Bad receive\n");
+			perror("Bad receive");
 			return -1;
 		case(0):
-			perror("Server closed socket\n");
+			perror("Server closed socket");
 			return -1;
 		default:
 			/* Check for success */
@@ -80,10 +80,10 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 				case(KV_SUCCESS):
 					return 0;
 				case(KV_FAILURE):
-					perror("Server failure\n");
+					perror("Server failure");
 					return -1;
 				default:
-					perror("Unknown error\n");
+					perror("Unknown error");
 					return -1;
 			}
 	}
@@ -107,7 +107,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	
 	/* Send message header */
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing message header\n");
+		perror("Writing message header");
 		return -1;
 	}
 	
@@ -115,10 +115,10 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
     switch(nbytes){
 		case(-1):
-			perror("Bad receive\n");
+			perror("Bad receive");
 			return -1;
 		case(0):
-			perror("Server closed socket\n");
+			perror("Server closed socket");
 			return -1;
 		default:
 			/* Check for success */
@@ -128,19 +128,19 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 					nbytes = recv(kv_descriptor, value, value_length, 0);
 					switch(nbytes){
 						case(-1):
-							perror("Bad receive\n");
+							perror("Bad receive");
 							return -1;
 						case(0):
-							perror("Server closed socket\n");
+							perror("Server closed socket");
 							return -1;
 						default:
 							return nbytes;
 					}
 				case(KV_FAILURE):
-					perror("Server failure\n");
+					perror("Server failure");
 					return -1;
 				default:
-					perror("Unknown error\n");
+					perror("Unknown error");
 					return -1;
 			}
 	}
@@ -163,7 +163,7 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	
 	/* Send message header */
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing message header\n");
+		perror("Writing message header");
 		return -1;
 	}
 	
@@ -171,10 +171,10 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
     switch(nbytes){
 		case(-1):
-			perror("Bad receive\n");
+			perror("Bad receive");
 			return -1;
 		case(0):
-			perror("Server closed socket\n");
+			perror("Server closed socket");
 			return -1;
 		default:
 			/* Check for success */
@@ -182,10 +182,10 @@ int kv_delete(int kv_descriptor, uint32_t key){
 				case(KV_SUCCESS):
 					return 0;
 				case(KV_FAILURE):
-					perror("Server failure\n");
+					perror("Server failure");
 					return -1;
 				default:
-					perror("Unknown error\n");
+					perror("Unknown error");
 					return -1;
 			}
 	}

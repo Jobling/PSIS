@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -g
-DEPS = message.h psiskv_lib.h
+DEPS = message.h psiskv_lib.h psiskv_database.h
 
-%.o: %.c $(DEPS)
+%.o: %.c %.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 server: psiskv_server.c $(DEPS)

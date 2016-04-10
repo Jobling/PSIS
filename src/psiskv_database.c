@@ -11,7 +11,7 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
 	if(head == NULL){
 		head = (kv_data) malloc(sizeof(struct key_value_node));
 		if(head == NULL){
-			perror("Head malloc\n");
+			perror("Head malloc");
 			return -1;
 		}
 		head->key = key;
@@ -34,7 +34,7 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
 		kv_data new_node;
 		new_node = (kv_data) malloc(sizeof(struct key_value_node));
 		if(new_node == NULL){
-			perror("New node malloc\n");
+			perror("New node malloc");
 			return -1;
 		}
 		
@@ -47,11 +47,50 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
 	return 0;
 }
 
-int kv_read_node(kv_data head, uint32_t key, char * value, int value_length){
-	return 0;
+/* This function read a value from the linkedlist.
+ * The retrieved value is stored in the array pointed by value. 
+ * 
+ * This function returns 0 in case of success.
+ * This function returns -1 in case of error. */
+int kv_read_node(kv_data head, uint32_t key, char * value){
+	kv_data aux;
+	/* Travel through the list */
+	for(aux = head; aux->next != NULL; aux = aux->next){
+		if(aux->key == key){
+			value = aux->value;
+			return 0;
+		}
+	}
+	
+	perror("No value attributed to this key");
+	return -1;
 }
 
-int kv_delete_node(kv_data head, uint32_t key){
-	return 0;
+/* This function deletes a key-value pair from the linkedlist
+ * Freeing the necessary memory */
+void kv_delete_node(kv_data head, uint32_t key){
+	kv_data aux;
+	/* Check if the firstnode has the key */ 
+	if(head->key == key){
+		aux = head;
+		head = head->next;
+		free(aux->value);
+		free(aux);
+		return;
+	}else{
+		kv_data prev;		
+		/* Travel through the list */
+		for(prev = head, aux = head->next; aux->next != NULL; aux = aux->next, prev = prev->next){
+			if(aux->key == key){
+				prev->next = aux->next;
+				free(aux->value);
+				free(aux);
+				return;
+			}
+		}
+	}
+	
+	perror("No node with this key");
+	return;
 }
 

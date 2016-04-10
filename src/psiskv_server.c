@@ -34,7 +34,7 @@ void server_init(){
 	
 	/* Create socket */ 
 	if((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-		perror("Socket\n");
+		perror("Socket");
 		exit(-1);
 	}
 	
@@ -45,13 +45,13 @@ void server_init(){
 	
 	/* Bind socket to address */
 	if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
-		perror("Bind\n");
+		perror("Bind");
 		exit(-1);
 	}
      
     /* Start listening on the bound socket */ 
     if(listen(listener, 1) == -1){
-		perror("Listen\n");
+		perror("Listen");
 		exit(-1);
 	}
 }
@@ -79,7 +79,7 @@ int main(){
         nbytes = recv(sock_in, &msg, sizeof(message), 0);
         switch(nbytes){
 			case(-1):
-				perror("Bad receive\n");
+				perror("Bad receive");
 				close(listener);
 				close(sock_in);
 				exit(-1);
@@ -102,7 +102,7 @@ int main(){
 						break;
 					default:
 						printf("Unknown message operation\n");
-						perror("Message operation\n");
+						perror("Message operation");
 						close(listener);
 						close(sock_in);
 						exit(0);
