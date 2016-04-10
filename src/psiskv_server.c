@@ -10,6 +10,8 @@
 #include "message.h"
 #include "psiskv_database.h"
 
+kv_data database;
+
 int listener;
 int sock_in = -1;
 
@@ -19,6 +21,7 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		close(listener);
+		kv_delete_list(database);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -54,6 +57,38 @@ void server_init(){
 		perror("Listen");
 		exit(-1);
 	}
+}
+
+/* Handle KV_WRITE operations */
+void server_write(uint32_t key, int value_length){
+	int nbytes;
+	char * value;
+	message msg;
+	
+	value = (char *) malloc(value_length * sizeof(char));
+	if(value == NULL){
+		perror("Allocating buffer");
+		msg.operation = KV_FAILURE;
+	}else{
+		if((nbytes = recv(sock_in, value, value_length, 0)) < 0){
+			perror("Receiving data to write");
+			msg.operation = KV_FAILURE;
+		}else{
+			if(kv_add_node(database, key, value) == -1){
+				perror("Adding value to database");
+				msg.operation = KV_FAILURE;
+			}else
+				msg.operation = KV_SUCCESS;
+		}
+	}
+						
+	/* Send request outcome */
+	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1){
+		perror("Writing response header");
+		break;
+	}
+	
+	return;				
 }
 
 int main(){
@@ -95,7 +130,7 @@ int main(){
 						printf("Message reading not yet implemented.\n");
 						break;
 					case(KV_WRITE):
-						printf("Message writing not yet implemented.\n");
+						server_write(msg.key, msg.data_length);
 						break;
 					case(KV_DELETE):
 						printf("Key deletion not yet implemented.\n");

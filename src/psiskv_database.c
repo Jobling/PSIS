@@ -44,6 +44,9 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
 		new_node->next = NULL;
 		aux->next = new_node;
 	}
+	
+	/* Reset the value data memory */
+	value = NULL;
 	return 0;
 }
 
@@ -91,6 +94,19 @@ void kv_delete_node(kv_data head, uint32_t key){
 	}
 	
 	perror("No node with this key");
+	return;
+}
+
+/* This function is used to cleanup 
+ * memory used by the linked list */
+void kv_delete_list(kv_data head){
+	kv_data aux;
+	while(head != NULL){
+		aux = head;
+		head = head->next;
+		free(aux->value);
+		free(aux);
+	}
 	return;
 }
 
