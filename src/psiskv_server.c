@@ -8,10 +8,13 @@
 #include <unistd.h>
 
 #include "message.h"
+#include "psiskv_database.h"
 
 int listener;
 int sock_in = -1;
 
+/* Handle SIGINT signal to perform
+ * a clean shutdown of the server */
 void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
@@ -23,17 +26,13 @@ void sig_handler(int sig_number){
 	}
 }
 
-int main(){
-    message msg;
-    
-    int nbytes;
- 	struct sockaddr_in local_addr;
- 	struct sockaddr_in client_addr;
-	socklen_t addr_size;
- 	
-	signal(SIGINT, sig_handler);
+/* Initialize listening socket listener
+ * May as well return it (not done because
+ * of the sig_handler) */
+void server_init(){
+	struct sockaddr_in local_addr;
 	
-    /* Create socket  */ 
+	/* Create socket */ 
 	if((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket\n");
 		exit(-1);
@@ -55,6 +54,17 @@ int main(){
 		perror("Listen\n");
 		exit(-1);
 	}
+}
+
+int main(){
+    message msg;
+    
+    int nbytes;
+ 	struct sockaddr_in client_addr;
+	socklen_t addr_size;
+ 	
+	signal(SIGINT, sig_handler);
+	server_init();
 		
    	printf("Socket created and binded.\nListening\n");
 

@@ -1,5 +1,9 @@
 #include "psiskv_lib.h"
 
+/* This function establishes connection with a Key-value store.
+ * 
+ * This function returns a key-value store descriptor.
+ * This function returns -1 in case of error. */
 int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sockaddr_in server_addr;
 	int kv_descriptor;
@@ -27,12 +31,19 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	return kv_descriptor;
 }
 
+/* This function closes a previously opened key-value store's connection */
 void kv_close(int kv_descriptor){
 	if(close(kv_descriptor))
 		perror("Close\n");
 	return;
 }
 
+/* This function contacts the key-value store and stores 
+ * the pair (key, value). The value is an array of bytes 
+ * with length of value_length. 
+ * 
+ * This function returns 0 in case of success.
+ * This function returns -1 in case of error. */
 int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 	message msg;
 	int nbytes;
@@ -79,6 +90,12 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 
 }
 
+/* This function contacts the key-value store and retrieves 
+ * the value corresponding to key. The retrieved value has maximum 
+ * length of value_length and is stored in the array pointed by value. 
+ * 
+ * This function returns the size of the read bytes in case of success.
+ * This function returns -1 in case of error.*/
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	message msg;
 	int nbytes;
@@ -129,6 +146,12 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	}
 }
 
+/* This function contacts the key-value store to delete 
+ * the value corresponding to key. From this moment on 
+ * any kv_read to the suplied key will return error.
+ * 
+ * This function returns 0 in case of success.
+ * This function returns -1 in case of error. */
 int kv_delete(int kv_descriptor, uint32_t key){
 	message msg;
 	int nbytes;
@@ -168,4 +191,3 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	}
 
 }
-
