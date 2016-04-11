@@ -135,6 +135,65 @@ void server_write(uint32_t key, int value_length){
 	return;
 }
 
+/* Handle KV_READ operations */
+void server_read(uint32_t key){
+	message msg;
+	char * value;
+	int nbytes;
+
+	/* Read data from database */
+	if(kv_read_node(database, key, value) == 0)
+		msg.operation = KV_SUCCESS;
+	else
+		msg.operation = KV_FAILURE;
+
+	/* Send first ACK to client */
+	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1){
+		perror("Writing first KV_READ ACK");
+		return;
+	}
+
+	/* Wait for ACK from client */
+	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	switch(nbytes){
+		case(-1):
+			perror("Bad receive");
+			close(sock_in);
+			sock_in = -1;
+			return;
+		case(0):
+			perror("Client closed socket");
+			close(sock_in);
+			sock_in = -1;
+			return;
+		default:
+			if(msg.operation == KV_FAILURE)
+				return;
+
+	/* Send data to client */
+	if((nbytes = send(sock_in, value, msg.data_length, 0)) == -1)
+		perror("Writing message content");
+
+	return;
+}
+
+/* Handle KV_DELETE operations */
+void server_delete(uint32_t key){
+	message msg;
+
+	/* Delete node from database */
+	if(kv_delete_node(database, key) == 0)
+		msg.operation = KV_SUCCESS;
+	else
+		msg.operation = KV_FAILURE;
+
+	/* Send ACK to client */
+	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1)
+		perror("Writing first KV_WRITE ACK");
+
+	return;
+}
+
 int main(){
     message msg;
 
@@ -160,13 +219,13 @@ int main(){
 		/* Process message header */
 		switch(msg.operation){
 			case(KV_READ):
-				printf("Message reading not yet implemented.\n");
+				server_read(msg.key);
 				break;
 			case(KV_WRITE):
 				server_write(msg.key, msg.data_length);
 				break;
 			case(KV_DELETE):
-				printf("Key deletion not yet implemented.\n");
+				server_delete(msg.key);
 				break;
 			default:
 				printf("Unknown message operation\n");

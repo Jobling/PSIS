@@ -125,9 +125,21 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 		return -1;
 	}
 
-	/* The client must receive server confirmation */
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
-    switch(nbytes){
+	/* Receive ACK from server */
+	if(kv_get_ack(kv_descriptor) == -1)
+		return -1;
+
+	/* Send ACK to server (to receive value) */
+	msg.operation = KV_SUCCESS;
+	msg.data_length = value_length;
+	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+		perror("Writing first KV_WRITE ACK");
+		return;
+	}
+
+	/* Receive the actual content */
+	nbytes = recv(kv_descriptor, value, value_length, 0);
+	switch(nbytes){
 		case(-1):
 			perror("Bad receive");
 			return -1;
@@ -135,29 +147,9 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 			perror("Server closed socket");
 			return -1;
 		default:
-			/* Check for success */
-			switch(msg.operation){
-				case(KV_SUCCESS):
-					/* Receive the actual content */
-					nbytes = recv(kv_descriptor, value, value_length, 0);
-					switch(nbytes){
-						case(-1):
-							perror("Bad receive");
-							return -1;
-						case(0):
-							perror("Server closed socket");
-							return -1;
-						default:
-							return nbytes;
-					}
-				case(KV_FAILURE):
-					perror("Server failure");
-					return -1;
-				default:
-					perror("Unknown error");
-					return -1;
-			}
+			return nbytes;
 	}
+
 }
 
 /* This function contacts the key-value store to delete
@@ -182,26 +174,6 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	}
 
 	/* The client must receive server confirmation */
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
-    switch(nbytes){
-		case(-1):
-			perror("Bad receive");
-			return -1;
-		case(0):
-			perror("Server closed socket");
-			return -1;
-		default:
-			/* Check for success */
-			switch(msg.operation){
-				case(KV_SUCCESS):
-					return 0;
-				case(KV_FAILURE):
-					perror("Server failure");
-					return -1;
-				default:
-					perror("Unknown error");
-					return -1;
-			}
-	}
+	return kv_get_ack(kv_descriptor);
 
 }

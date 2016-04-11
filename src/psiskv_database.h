@@ -13,8 +13,7 @@ typedef struct key_value_node{
 
 int kv_add_node(kv_data head, uint32_t key, char * value);
 int kv_read_node(kv_data head, uint32_t key, char * value);
-void kv_delete_node(kv_data head, uint32_t key);
+int kv_delete_node(kv_data head, uint32_t key);
 void kv_delete_list(kv_data head);
 
 #endif
-
