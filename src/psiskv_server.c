@@ -67,20 +67,20 @@ void server_init(){
  *
  * This function returns 0 on success
  * This function returns -1 if an error occurs */
-int get_message_header(message * msg){
+int get_message_header(int * sock_in, message * msg){
 	int nbytes;
 
 	/* Receive message and parse errors */
-	nbytes = recv(sock_in, msg, sizeof(message), 0);
+	nbytes = recv(*sock_in, msg, sizeof(message), 0);
 	switch(nbytes){
 		case(-1):
 			perror("Bad receive");
-			close(sock_in);
-			sock_in = -1;
+			close(*sock_in);
+			*sock_in = -1;
 			return -1;
 		case(0):
-			close(sock_in);
-			sock_in = -1;
+			close(*sock_in);
+			*sock_in = -1;
 			return -1;
 		default:
 			return 0;
@@ -88,7 +88,7 @@ int get_message_header(message * msg){
 }
 
 /* Handle KV_WRITE operations */
-void server_write(uint32_t key, int value_length){
+void server_write(int * sock_in, uint32_t key, int value_length){
 	int nbytes;
 	char * value;
 	message msg;
@@ -103,7 +103,7 @@ void server_write(uint32_t key, int value_length){
 	}
 
 	/* Send first ACK (to receive value) */
-	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
 		perror("Writing first KV_WRITE ACK");
 		return;
 	}
@@ -112,7 +112,7 @@ void server_write(uint32_t key, int value_length){
 		return;
 
 	/* Receive value */
-	nbytes = recv(sock_in, value, value_length, 0);
+	nbytes = recv(*sock_in, value, value_length, 0);
 	switch(nbytes){
 		case(-1):
 			perror("Receiving data to write");
@@ -133,14 +133,14 @@ void server_write(uint32_t key, int value_length){
 	}
 
 	/* Send second ACK (to finish write protocol) */
-	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
 		perror("Writing first KV_WRITE ACK");
 	}
 	return;
 }
 
 /* Handle KV_READ operations */
-void server_read(uint32_t key){
+void server_read(int * sock_in, uint32_t key){
 	message msg;
 	char * value;
 	int nbytes;
@@ -154,23 +154,23 @@ void server_read(uint32_t key){
 		msg.operation = KV_FAILURE;
 
 	/* Send first ACK to client */
-	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
 		perror("Writing first KV_READ ACK");
 		return;
 	}
 
 	/* Wait for ACK from client */
-	nbytes = recv(sock_in, &msg, sizeof(message), 0);
+	nbytes = recv(*sock_in, &msg, sizeof(message), 0);
 	switch(nbytes){
 		case(-1):
 			perror("Bad receive");
-			close(sock_in);
-			sock_in = -1;
+			close(*sock_in);
+			*sock_in = -1;
 			return;
 		case(0):
 			perror("Client closed socket");
-			close(sock_in);
-			sock_in = -1;
+			close(*sock_in);
+			*sock_in = -1;
 			return;
 		default:
 			if(msg.operation == KV_FAILURE)
@@ -178,14 +178,14 @@ void server_read(uint32_t key){
 	}
 
 	/* Send data to client */
-	if((nbytes = send(sock_in, value, msg.data_length, 0)) == -1)
+	if((nbytes = send(*sock_in, value, msg.data_length, 0)) == -1)
 		perror("Writing message content");
 
 	return;
 }
 
 /* Handle KV_DELETE operations */
-void server_delete(uint32_t key){
+void server_delete(int * sock_in, uint32_t key){
 	message msg;
 	int nbytes;
 
@@ -196,14 +196,14 @@ void server_delete(uint32_t key){
 		msg.operation = KV_FAILURE;
 
 	/* Send ACK to client */
-	if((nbytes = send(sock_in, &msg, sizeof(message), 0)) == -1)
+	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
 		perror("Writing first KV_WRITE ACK");
 
 	return;
 }
 
 /* Threaded service management function */
-void database_handler(void * arg){
+void * database_handler(void * arg){
 	message msg;
 	socklen_t addr_size;
 	struct sockaddr_in client_addr;
@@ -217,20 +217,20 @@ void database_handler(void * arg){
 			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 		}
 
-        /* Read message header */
-        if(get_message_header(&msg) == -1)
+        	/* Read message header */
+        	if(get_message_header(&sock_in, &msg) == -1)
 			continue;
 
 		/* Process message header */
 		switch(msg.operation){
 			case(KV_READ):
-				server_read(msg.key);
+				server_read(&sock_in, msg.key);
 				break;
 			case(KV_WRITE):
-				server_write(msg.key, msg.data_length);
+				server_write(&sock_in, msg.key, msg.data_length);
 				break;
 			case(KV_DELETE):
-				server_delete(msg.key);
+				server_delete(&sock_in, msg.key);
 				break;
 			default:
 				printf("Unknown message operation\n");
@@ -247,6 +247,7 @@ void keyboard_handler(void * arg){
 }
 
 int main(){
+	int i;
 	pthread_t database_threads[NUM_THREADS];
 	// pthread_t keyboard_thread;
 
