@@ -134,7 +134,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	msg.data_length = value_length;
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
 		perror("Writing first KV_WRITE ACK");
-		return;
+		return -1;
 	}
 
 	/* Receive the actual content */

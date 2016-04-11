@@ -141,6 +141,8 @@ void server_read(uint32_t key){
 	char * value;
 	int nbytes;
 
+	value = NULL;
+
 	/* Read data from database */
 	if(kv_read_node(database, key, value) == 0)
 		msg.operation = KV_SUCCESS;
@@ -154,7 +156,7 @@ void server_read(uint32_t key){
 	}
 
 	/* Wait for ACK from client */
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	nbytes = recv(sock_in, &msg, sizeof(message), 0);
 	switch(nbytes){
 		case(-1):
 			perror("Bad receive");
@@ -169,6 +171,7 @@ void server_read(uint32_t key){
 		default:
 			if(msg.operation == KV_FAILURE)
 				return;
+	}
 
 	/* Send data to client */
 	if((nbytes = send(sock_in, value, msg.data_length, 0)) == -1)
@@ -180,6 +183,7 @@ void server_read(uint32_t key){
 /* Handle KV_DELETE operations */
 void server_delete(uint32_t key){
 	message msg;
+	int nbytes;
 
 	/* Delete node from database */
 	if(kv_delete_node(database, key) == 0)
@@ -195,9 +199,9 @@ void server_delete(uint32_t key){
 }
 
 int main(){
-    message msg;
+	message msg;
 
- 	struct sockaddr_in client_addr;
+	struct sockaddr_in client_addr;
 	socklen_t addr_size;
 
 	signal(SIGINT, sig_handler);
@@ -205,15 +209,15 @@ int main(){
 
    	printf("Socket created and binded.\nListening\n");
 
-    while(1){
+	while(1){
 		/* Accept first connection. Only one connection so far */
 		if(sock_in == -1){
 			addr_size = sizeof(client_addr);
 			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 		}
 
-        /* Read message header */
-        if(get_message_header(&msg) == -1)
+        	/* Read message header */
+        	if(get_message_header(&msg) == -1)
 			continue;
 
 		/* Process message header */
@@ -234,6 +238,7 @@ int main(){
 				close(sock_in);
 				exit(0);
 		}
-    }
-    exit(0);
+	}
+    	exit(0);
 }
+
