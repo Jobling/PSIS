@@ -6,14 +6,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "message.h"
 #include "psiskv_database.h"
 
-kv_data database;
+#define NUM_THREADS 10
+#define BACKLOG 5
 
+/* Global variables */
+kv_data database;
 int listener;
-int sock_in = -1;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
@@ -53,10 +56,11 @@ void server_init(){
 	}
 
     /* Start listening on the bound socket */
-    if(listen(listener, 1) == -1){
+    if(listen(listener, BACKLOG) == -1){
 		perror("Listen");
 		exit(-1);
 	}
+	printf("Socket created and binded.\nListening\n");
 }
 
 /* Receive first message from client
@@ -198,16 +202,13 @@ void server_delete(uint32_t key){
 	return;
 }
 
-int main(){
+/* Threaded service management function */
+void database_handler(void * arg){
 	message msg;
-
-	struct sockaddr_in client_addr;
 	socklen_t addr_size;
+	struct sockaddr_in client_addr;
 
-	signal(SIGINT, sig_handler);
-	server_init();
-
-   	printf("Socket created and binded.\nListening\n");
+	int sock_in = -1;
 
 	while(1){
 		/* Accept first connection. Only one connection so far */
@@ -216,8 +217,8 @@ int main(){
 			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 		}
 
-        	/* Read message header */
-        	if(get_message_header(&msg) == -1)
+        /* Read message header */
+        if(get_message_header(&msg) == -1)
 			continue;
 
 		/* Process message header */
@@ -234,11 +235,29 @@ int main(){
 			default:
 				printf("Unknown message operation\n");
 				perror("Message operation");
-				close(listener);
 				close(sock_in);
 				exit(0);
 		}
 	}
-    	exit(0);
 }
 
+/* Function meant to receive commands from keyboard */
+void keyboard_handler(void * arg){
+	return;
+}
+
+int main(){
+	pthread_t database_threads[NUM_THREADS];
+	// pthread_t keyboard_thread;
+
+	signal(SIGINT, sig_handler);
+	server_init();
+
+	for(i = 0; i < NUM_THREADS; i++){
+		/* Check for errors? */
+		pthread_create(&database_threads[i], NULL, database_handler, NULL);
+	}
+
+	printf("All threads deployed\n");
+    exit(0);
+}
