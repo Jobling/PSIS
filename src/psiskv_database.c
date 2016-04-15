@@ -5,15 +5,14 @@
  * will be overwritten (the old value is freed and the new value is kept)
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. */
+ * This function returns -1 in case of error (always malloc error) */
 int kv_add_node(kv_data head, uint32_t key, char * value){
 	/* In case the linkedlist is empty, a new one is created */
 	if(head == NULL){
 		head = (kv_data) malloc(sizeof(struct key_value_node));
-		if(head == NULL){
-			perror("Head malloc");
+		if(head == NULL)
 			return -1;
-		}
+
 		head->key = key;
 		head->value = value;
 		head->next = NULL;
@@ -33,10 +32,8 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
 		/* Creating new node */
 		kv_data new_node;
 		new_node = (kv_data) malloc(sizeof(struct key_value_node));
-		if(new_node == NULL){
-			perror("New node malloc");
+		if(new_node == NULL)
 			return -1;
-		}
 
 		/* Storing node on the list */
 		new_node->key = key;
@@ -54,7 +51,7 @@ int kv_add_node(kv_data head, uint32_t key, char * value){
  * The retrieved value is stored in the array pointed by value.
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. */
+ * This function returns -1 in case of error (key doesn't exist) */
 int kv_read_node(kv_data head, uint32_t key, char * value){
 	kv_data aux;
 	/* Travel through the list */
@@ -65,7 +62,6 @@ int kv_read_node(kv_data head, uint32_t key, char * value){
 		}
 	}
 
-	perror("No value attributed to this key");
 	return -1;
 }
 
@@ -73,7 +69,7 @@ int kv_read_node(kv_data head, uint32_t key, char * value){
  * Freeing the necessary memory
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. */
+ * This function returns -1 in case of error (key not in database) */
 int kv_delete_node(kv_data head, uint32_t key){
 	kv_data aux;
 	/* Check if the firstnode has the key */
@@ -96,7 +92,6 @@ int kv_delete_node(kv_data head, uint32_t key){
 		}
 	}
 
-	perror("No node with this key");
 	return -1;
 }
 

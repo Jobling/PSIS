@@ -90,10 +90,6 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 		return -1;
 	}
 
-	/* Receive ACK from server */
-	if(kv_get_ack(kv_descriptor) == -1)
-		return -1;
-
 	/* Send message content */
 	if((nbytes = send(kv_descriptor, value, msg.data_length, 0)) == -1){
 		perror("Writing message content");
@@ -101,6 +97,8 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 	}
 
 	/* The client must receive server confirmation */
+
+
 	return kv_get_ack(kv_descriptor);
 }
 

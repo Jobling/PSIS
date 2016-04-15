@@ -8,7 +8,6 @@
 #define KV_DELETE 2
 
 #define KV_SUCCESS 200
-#define KV_FAILURE 400
 
 typedef struct message_protocol{
 	int operation;
@@ -17,4 +16,3 @@ typedef struct message_protocol{
 } message;
 
 #endif
-

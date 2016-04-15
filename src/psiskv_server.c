@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <string.h>
 
 #include "message.h"
 #include "psiskv_database.h"
@@ -52,15 +53,25 @@ void server_init(){
 	/* Bind socket to address */
 	if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
 		perror("Bind");
+		close(listener);
 		exit(-1);
 	}
 
     /* Start listening on the bound socket */
     if(listen(listener, BACKLOG) == -1){
 		perror("Listen");
+		close(listener);
 		exit(-1);
 	}
 	printf("Socket created and binded.\nListening\n");
+}
+
+/* Handle errors and closes local socket */
+void error_and_close(int * sock_in, char * warning){
+	printf("Warning: %s", warning);
+	close(*sock_in);
+	*sock_in = -1;
+	return;
 }
 
 /* Receive first message from client
@@ -74,13 +85,10 @@ int get_message_header(int * sock_in, message * msg){
 	nbytes = recv(*sock_in, msg, sizeof(message), 0);
 	switch(nbytes){
 		case(-1):
-			perror("Bad receive");
-			close(*sock_in);
-			*sock_in = -1;
+			error_and_close(sock_in, "Failed to receive message header.\n");
 			return -1;
 		case(0):
-			close(*sock_in);
-			*sock_in = -1;
+			error_and_close(sock_in, "Client closed socket.\n");
 			return -1;
 		default:
 			return 0;
@@ -97,89 +105,54 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 	value = (char *) malloc(value_length * sizeof(char));
 	if(value == NULL){
 		perror("Allocating buffer");
-		msg.operation = KV_FAILURE;
+		close(*sock_in);
+		close(listener);
+		kv_delete_list(database);
+		exit(-1);
 	}else{
-		msg.operation = KV_SUCCESS;
+		/* Receive value */
+		nbytes = recv(*sock_in, value, value_length, 0);
+		switch(nbytes){
+			case(-1):
+				error_and_close(sock_in, "Failed to receive value to write.\n");
+				break;
+			case(0):
+				error_and_close(sock_in, "Client closed socket before receiving value.\n");
+				break;
+			default:
+				/* Store value on database, with given key */
+				if(kv_add_node(database, key, value) == -1){
+					perror("Allocating nodes on database");
+					close(*sock_in);
+					close(listener);
+					kv_delete_list(database);
+					exit(-1);
+				}else{
+					msg.operation = KV_SUCCESS;
+					if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
+						error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
+					}
+				}
+		}
 	}
 
-	/* Send first ACK (to receive value) */
-	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
-		perror("Writing first KV_WRITE ACK");
-		return;
-	}
-
-	if(msg.operation == KV_FAILURE)
-		return;
-
-	/* Receive value */
-	nbytes = recv(*sock_in, value, value_length, 0);
-	switch(nbytes){
-		case(-1):
-			perror("Receiving data to write");
-			msg.operation = KV_FAILURE;
-			break;
-		case(0):
-			perror("Client closed connection before server writing value");
-			msg.operation = KV_FAILURE;
-			break;
-		default:
-			/* Store value on database, with given key */
-			if(kv_add_node(database, key, value) == -1){
-				perror("Adding value to database");
-				msg.operation = KV_FAILURE;
-			}else{
-				msg.operation = KV_SUCCESS;
-			}
-	}
-
-	/* Send second ACK (to finish write protocol) */
-	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
-		perror("Writing first KV_WRITE ACK");
-	}
 	return;
 }
 
 /* Handle KV_READ operations */
 void server_read(int * sock_in, uint32_t key){
-	message msg;
 	char * value;
 	int nbytes;
 
 	value = NULL;
 
 	/* Read data from database */
-	if(kv_read_node(database, key, value) == 0)
-		msg.operation = KV_SUCCESS;
-	else
-		msg.operation = KV_FAILURE;
-
-	/* Send first ACK to client */
-	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
-		perror("Writing first KV_READ ACK");
-		return;
-	}
-
-	/* Wait for ACK from client */
-	nbytes = recv(*sock_in, &msg, sizeof(message), 0);
-	switch(nbytes){
-		case(-1):
-			perror("Bad receive");
-			close(*sock_in);
-			*sock_in = -1;
-			return;
-		case(0):
-			perror("Client closed socket");
-			close(*sock_in);
-			*sock_in = -1;
-			return;
-		default:
-			if(msg.operation == KV_FAILURE)
-				return;
-	}
-
-	/* Send data to client */
-	if((nbytes = send(*sock_in, value, msg.data_length, 0)) == -1)
-		perror("Writing message content");
+	if(kv_read_node(database, key, value) == 0){
+		/* Send data to client (in case of success) */
+		if((nbytes = send(*sock_in, value, strlen(value) + 1, 0)) == -1)
+			error_and_close(sock_in, "Failed to send message content.\n");
+	}else
+		error_and_close(sock_in, "Failed to read key from database.\n");
 
 	return;
 }
@@ -190,15 +163,13 @@ void server_delete(int * sock_in, uint32_t key){
 	int nbytes;
 
 	/* Delete node from database */
-	if(kv_delete_node(database, key) == 0)
+	if(kv_delete_node(database, key) == -1)
+		error_and_close(sock_in, "Failed to delete key from database.\n");
+	else{
 		msg.operation = KV_SUCCESS;
-	else
-		msg.operation = KV_FAILURE;
-
-	/* Send ACK to client */
-	if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
-		perror("Writing first KV_WRITE ACK");
-
+		if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
+			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
+	}
 	return;
 }
 
@@ -236,7 +207,9 @@ void * database_handler(void * arg){
 				printf("Unknown message operation\n");
 				perror("Message operation");
 				close(sock_in);
-				exit(0);
+				close(listener);
+				kv_delete_list(database);
+				exit(-1);
 		}
 	}
 }
@@ -255,8 +228,11 @@ int main(){
 	server_init();
 
 	for(i = 0; i < NUM_THREADS; i++){
-		/* Check for errors? */
-		pthread_create(&database_threads[i], NULL, database_handler, NULL);
+		if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
+			perror("Creating threads");
+			close(listener);
+			exit(-1);
+		}
 	}
 
 	printf("All threads deployed\n");
