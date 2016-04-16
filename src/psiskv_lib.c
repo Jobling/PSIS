@@ -38,37 +38,6 @@ void kv_close(int kv_descriptor){
 	return;
 }
 
-/* Auxiliary function for evaluating message aknowledgements
- *
- * This function returns 0 in case of success
- * This function returns -1 in case of error, printing error accordingly */
-int kv_get_ack(int kv_descriptor){
-	int nbytes;
-	message msg;
-
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
-	switch(nbytes){
-		case(-1):
-			perror("Bad receive");
-			return -1;
-		case(0):
-			perror("Server closed socket");
-			return -1;
-		default:
-			/* Check for success */
-			switch(msg.operation){
-				case(KV_SUCCESS):
-					return 0;
-				case(KV_FAILURE):
-					perror("Server failure");
-					return -1;
-				default:
-					perror("Unknown error");
-					return -1;
-			}
-	}
-}
-
 /* This function contacts the key-value store and stores
  * the pair (key, value). The value is an array of bytes
  * with length of value_length.
@@ -140,10 +109,10 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	nbytes = recv(kv_descriptor, value, value_length, 0);
 	switch(nbytes){
 		case(-1):
-			perror("Bad receive");
+			printf("Warning: Failed to receive KV_READ confirmation.\n");
 			return -1;
 		case(0):
-			perror("Server closed socket");
+			printf("Warning: Server closed socket.\n");
 			return -1;
 		default:
 			return nbytes;
@@ -173,6 +142,20 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	}
 
 	/* The client must receive server confirmation */
-	return kv_get_ack(kv_descriptor);
-
+	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	switch(nbytes){
+		case(-1):
+			printf("Warning: Failed to receive KV_DELETE confirmation.\n");
+			return -1;
+		case(0):
+			printf("Warning: Server closed socket.\n");
+			return -1;
+		default:
+			/* Check for success */
+			if(msg.operation != KV_SUCCESS){
+				printf("Warning: Unexpected error.\n");
+				return -1;
+			}else
+				return 0;
+	}
 }
