@@ -7,7 +7,10 @@ LIBS = -pthread
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 server: psiskv_server.c psiskv_database.o $(DEPS)
-	$(CC) -o server $^ $(CFLAGS) $(LIBS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+client: psiskv_client.c psiskv_lib.o
+	$(CC) -o $@ $^ $(CFLAGS)
 
 test: psiskv_lib.o psiskv_database.o
 
