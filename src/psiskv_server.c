@@ -33,9 +33,7 @@ void sig_handler(int sig_number){
 	}
 }
 
-/* Initialize listening socket listener
- * May as well return it (not done because
- * of the sig_handler) */
+/* Initialize listening socket listener */
 void server_init(){
 	struct sockaddr_in local_addr;
 
@@ -117,7 +115,7 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 				error_and_close(sock_in, "Failed to receive value to write.\n");
 				break;
 			case(0):
-				error_and_close(sock_in, "Client closed socket before receiving value.\n");
+				error_and_close(sock_in, "Client closed socket before sending value.\n");
 				break;
 			default:
 				/* Store value on database, with given key */
@@ -180,16 +178,15 @@ void * database_handler(void * arg){
 	struct sockaddr_in client_addr;
 
 	int sock_in = -1;
+	addr_size = sizeof(client_addr);
 
 	while(1){
-		/* Accept first connection. Only one connection so far */
-		if(sock_in == -1){
-			addr_size = sizeof(client_addr);
+		/* Accept first connection. */
+		if(sock_in == -1)
 			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
-		}
 
-        	/* Read message header */
-        	if(get_message_header(&sock_in, &msg) == -1)
+        /* Read message header */
+        if(get_message_header(&sock_in, &msg) == -1)
 			continue;
 
 		/* Process message header */

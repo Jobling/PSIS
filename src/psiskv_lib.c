@@ -3,7 +3,7 @@
 /* This function establishes connection with a Key-value store.
  *
  * This function returns a key-value store descriptor.
- * This function returns -1 in case of error. */
+ * This function returns -1 in case of error */
 int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sockaddr_in server_addr;
 	int kv_descriptor;
@@ -11,7 +11,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	/* Create socket  */
 	if((kv_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket");
-		return(-1);
+		return -1;
 	}
 
 	/* Create address */
@@ -86,20 +86,33 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 
 	/* Send message header */
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing message header");
+		printf("Warning: Failed to send message header.\n");
 		return -1;
 	}
 
 	/* Send message content */
 	if((nbytes = send(kv_descriptor, value, msg.data_length, 0)) == -1){
-		perror("Writing message content");
+		printf("Warning: Failed to send message content.\n");
 		return -1;
 	}
 
 	/* The client must receive server confirmation */
-
-
-	return kv_get_ack(kv_descriptor);
+	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	switch(nbytes){
+		case(-1):
+			printf("Warning: Failed to receive KV_WRITE confirmation.\n");
+			return -1;
+		case(0):
+			printf("Warning: Server closed socket.\n");
+			return -1;
+		default:
+			/* Check for success */
+			if(msg.operation != KV_SUCCESS){
+				printf("Warning: Unexpected error.\n");
+				return -1;
+			}else
+				return 0;
+	}
 }
 
 /* This function contacts the key-value store and retrieves
@@ -119,19 +132,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 
 	/* Send message header */
 	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing message header");
-		return -1;
-	}
-
-	/* Receive ACK from server */
-	if(kv_get_ack(kv_descriptor) == -1)
-		return -1;
-
-	/* Send ACK to server (to receive value) */
-	msg.operation = KV_SUCCESS;
-	msg.data_length = value_length;
-	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
-		perror("Writing first KV_WRITE ACK");
+		printf("Warning: Failed to send message header.\n");
 		return -1;
 	}
 
