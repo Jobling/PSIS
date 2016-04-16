@@ -12,8 +12,6 @@ server: psiskv_server.c psiskv_database.o $(DEPS)
 client: psiskv_client.c psiskv_lib.o
 	$(CC) -o $@ $^ $(CFLAGS)
 
-test: psiskv_lib.o psiskv_database.o
-
 clean:
-	rm -f *.o
-	rm -f server
+	@rm -f server client *.o
+	@echo "Done."

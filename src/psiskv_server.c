@@ -233,5 +233,6 @@ int main(){
 	}
 
 	printf("All threads deployed\n");
+	sleep(300);
     exit(0);
 }
