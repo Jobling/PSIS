@@ -5,8 +5,9 @@
 
 int main(int argc, char ** argv){
     int kv_socket;
-    char string[13] = "Hello World\n";
-
+    
+    char string[13] = "Hello Wor";
+    
     /* Establishing connection to server */
     if((kv_socket = kv_connect(SERVER_IP, SERVER_PORT)) == -1)
         exit(-1);
@@ -23,7 +24,7 @@ int main(int argc, char ** argv){
 
     /* Reading from server */
     strcpy(string, " ");
-    if(kv_read(kv_socket, 15, string, 13) == 0)
+    if(kv_read(kv_socket, 15, string, 13) != -1)
         printf("KV_READ successful: %s\n", string);
     else{
         kv_close(kv_socket);
