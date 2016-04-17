@@ -148,13 +148,16 @@ void server_read(int * sock_in, uint32_t key){
 	value = NULL;
 
 	/* Read data from database */
-	if((value = kv_read_node(&database, key)) != NULL){
+	if(kv_read_node(&database, key, &value) == 0){
 		/* Send data to client (in case of success) */
 		if((nbytes = send(*sock_in, value, strlen(value) + 1, 0)) == -1)
 			error_and_close(sock_in, "Failed to send message content.\n");
-	}else
-		error_and_close(sock_in, "Failed to read key from database.\n");
+	}else{
+        printf("Warning: Failed to read key from database.\n");
+		if((nbytes = send(*sock_in, KV_NOT_FOUND, sizeof(KV_NOT_FOUND), 0)) == -1)
+			error_and_close(sock_in, "Failed to send KV_READ failure.\n");
 
+    }
 	return;
 }
 
@@ -164,9 +167,12 @@ void server_delete(int * sock_in, uint32_t key){
 	int nbytes;
 
 	/* Delete node from database */
-	if(kv_delete_node(&database, key) == -1)
-		error_and_close(sock_in, "Failed to delete key from database.\n");
-	else{
+	if(kv_delete_node(&database, key) == -1){
+        printf("Warning: Key not in database.\n");
+        msg.operation = KV_FAILURE;
+		if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
+			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
+	}else{
 		msg.operation = KV_SUCCESS;
 		if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
 			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");

@@ -88,8 +88,9 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
  * the value corresponding to key. The retrieved value has maximum
  * length of value_length and is stored in the array pointed by value.
  *
- * This function returns the size of the read bytes in case of success.
- * This function returns -1 in case of error.*/
+ * This function returns 0 in case of success.
+ * This function returns -1 in case of error.
+ * This function returns 1 in case of key not on database */
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	message msg;
 	int nbytes;
@@ -115,7 +116,11 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 			printf("Warning: Server closed socket.\n");
 			return -1;
 		default:
-			return nbytes;
+			if(strcmp(value, KV_NOT_FOUND) == 0){
+				printf("Key not in database.\n");
+				return 1;
+			}else
+				return 0;
 	}
 
 }
@@ -125,7 +130,8 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
  * any kv_read to the suplied key will return error.
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. */
+ * This function returns -1 in case of error. 
+ * This function returns 1 in case the key is not on database */
 int kv_delete(int kv_descriptor, uint32_t key){
 	message msg;
 	int nbytes;
@@ -152,9 +158,9 @@ int kv_delete(int kv_descriptor, uint32_t key){
 			return -1;
 		default:
 			/* Check for success */
-			if(msg.operation != KV_SUCCESS){
-				printf("Warning: Unexpected error.\n");
-				return -1;
+			if(msg.operation == KV_FAILURE){
+				printf("Key not on database.\n");
+				return 1;
 			}else
 				return 0;
 	}

@@ -58,19 +58,20 @@ int kv_add_node(kv_data * head, uint32_t key, char * value){
  *
  * This function returns the value in case of success.
  * This function returns NULL in case of error (key doesn't exist) */
-char * kv_read_node(kv_data * head, uint32_t key){
+int kv_read_node(kv_data * head, uint32_t key, char ** value){
 	if(*head == NULL)
-        return NULL;
+        return -1;
     
     kv_data aux;
 	/* Travel through the list */
 	for(aux = (*head); aux != NULL; aux = aux->next){
 		if(aux->key == key){
-			return aux->value;
+            *value = aux->value;
+			return 0;
 		}
 	}
 
-	return NULL;
+	return -1;
 }
 
 /* This function deletes a key-value pair from the linkedlist

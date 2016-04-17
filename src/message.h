@@ -8,6 +8,8 @@
 #define KV_DELETE 2
 
 #define KV_SUCCESS 200
+#define KV_FAILURE 400
+#define KV_NOT_FOUND "KV_NOT_FOUND\0"
 
 typedef struct message_protocol{
 	int operation;

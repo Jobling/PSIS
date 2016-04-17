@@ -45,6 +45,11 @@ int main(int argc, char ** argv){
     int kv_socket = -1;
     int arg_num;
 
+    if((kv_socket = kv_connect(SERVER_IP, SERVER_PORT)) == -1)
+        exit(-1);
+    else
+        printf("Connection established.\n");
+
     print_interface();
     while(1){
         if(fgets(input, BUFFSIZE, stdin) == NULL){
@@ -60,17 +65,6 @@ int main(int argc, char ** argv){
         }
 
         switch(get_command(command)){
-            case(CONNECT):
-                /* Establishing connection to server */
-                if(kv_socket == -1){
-                    if((kv_socket = kv_connect(SERVER_IP, SERVER_PORT)) == -1)
-                        exit(-1);
-                    else
-                        printf("Connection established.\n");
-                }else{
-                    printf("Client already connected to socket.\n");
-                }
-                break;
             case(WRITE):
                 if(arg_num < 3)
                     printf("Incorrect number of arguments.\n");
@@ -87,32 +81,47 @@ int main(int argc, char ** argv){
             case(READ):
                 if(arg_num < 2)
                     printf("Incorrect number of arguments.\n");
-                else{
+                else
                     /* Reading from server */
-                    if(kv_read(kv_socket, key, value, sizeof(value) + 1) != -1)
-                        printf("KV_READ successful: %s\n", string);
-                    else{
-                        kv_close(kv_socket);
-                        exit(-1);
+                    switch(kv_read(kv_socket, key, value, sizeof(value) + 1)){
+                        case(-1):
+                            kv_close(kv_socket);
+                            exit(-1);
+                        case(1):
+                            break;
+                        case(0):
+                            printf("KV_READ successful: %s\n", value);
+                            break;
+                        default:
+                            printf("Unknown error.\n");
+                            break;
                     }
-                }
                 break;
             case(DELETE):
                 if(arg_num < 2)
                     printf("Incorrect number of arguments.\n");
-                else{
+                else
                     /* Deleting key from server */
-                    if(kv_delete(kv_socket, key) == 0)
-                        printf("KV_DELETE successful.\n");
-                    else{
-                        kv_close(kv_socket);
-                        exit(-1);
+                    switch(kv_delete(kv_socket, key)){
+                        case(-1):
+                            kv_close(kv_socket);
+                            exit(-1);
+                        case(1):
+                            break;
+                        case(0):
+                            printf("KV_DELETE successful.\n");
+                            break;
+                        default:
+                            printf("Unknown error.\n");
+                            break;
                     }
-                }
                 break;
             case(EXIT):
                 /* Closing socket normally */
                 kv_close(kv_socket);
+                exit(0);
+            default:
+                printf("Unknown command.\n");
                 break;
         }
     }
