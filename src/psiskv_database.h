@@ -13,9 +13,10 @@ typedef struct key_value_node{
 	struct key_value_node * next;
 } * kv_data;
 
+kv_data * database_init();
 int kv_add_node(kv_data * head, uint32_t key, char * value);
 int kv_read_node(kv_data * head, uint32_t key, char ** value);
 int kv_delete_node(kv_data * head, uint32_t key);
-void kv_delete_list(kv_data * head);
+void kv_delete_database(kv_data * head);
 
 #endif

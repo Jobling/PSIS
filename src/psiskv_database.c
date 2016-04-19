@@ -1,5 +1,13 @@
 #include "psiskv_database.h"
 
+/* This function allocates memoru for database structure */
+kv_data * database_init(){
+	kv_data * new_database;
+	new_database = (kv_data *) malloc(DATA_PRIME * sizeof(kv_data));
+	
+	return new_database;
+}
+
 /* This function adds a key_value_node to the linkedlist
  * In case there already exists a node with the same key, the value
  * will be overwritten (the old value is freed and the new value is kept)
@@ -133,7 +141,7 @@ int kv_delete_node(kv_data * head, uint32_t key){
 
 /* This function is used to cleanup
  * memory used by the linked list */
-void kv_delete_list(kv_data * head){
+void kv_delete_database(kv_data * head){
 	kv_data aux;
     int i;
     for(i = 0; i < DATA_PRIME; i++){
@@ -144,6 +152,7 @@ void kv_delete_list(kv_data * head){
             free(aux);
         }
     }
+    free(head);
 	return;
 }
 

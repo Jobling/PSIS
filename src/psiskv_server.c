@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
@@ -14,11 +14,12 @@
 
 #define NUM_THREADS 10
 #define BACKLOG 5
+#define BUFFSIZE 256
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Global variables */
-kv_data database[DATA_PRIME];
+kv_data * database;
 int listener;
 
 /* Handle SIGINT signal to perform
@@ -27,43 +28,12 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		close(listener);
-		kv_delete_list(database);
+		kv_delete_database(database);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
 		exit(-1);
 	}
-}
-
-/* Initialize listening socket listener */
-void server_init(){
-	struct sockaddr_in local_addr;
-
-	/* Create socket */
-	if((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-		perror("Socket");
-		exit(-1);
-	}
-
-	/* Create address */
-	local_addr.sin_family = AF_INET;
-	local_addr.sin_port = htons(9999);
-	local_addr.sin_addr.s_addr = INADDR_ANY;
-
-	/* Bind socket to address */
-	if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
-		perror("Bind");
-		close(listener);
-		exit(-1);
-	}
-
-    /* Start listening on the bound socket */
-    if(listen(listener, BACKLOG) == -1){
-		perror("Listen");
-		close(listener);
-		exit(-1);
-	}
-	printf("Socket created and binded.\nListening\n");
 }
 
 /* Handle errors and closes local socket */
@@ -95,6 +65,39 @@ int get_message_header(int * sock_in, message * msg){
 	}
 }
 
+/* Initialize listening socket listener */
+int server_init(int backlog){
+	int listener;
+	struct sockaddr_in local_addr;
+
+	/* Create socket */
+	if((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+		perror("Socket");
+		exit(-1);
+	}
+
+	/* Create address */
+	local_addr.sin_family = AF_INET;
+	local_addr.sin_port = htons(9999);
+	local_addr.sin_addr.s_addr = INADDR_ANY;
+
+	/* Bind socket to address */
+	if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
+		perror("Bind");
+		close(listener);
+		exit(-1);
+	}
+
+    /* Start listening on the bound socket */
+    if(listen(listener, backlog) == -1){
+		perror("Listen");
+		close(listener);
+		exit(-1);
+	}
+	printf("Socket created and binded.\nListening\n");
+	return listener;
+}
+
 /* Handle KV_WRITE operations */
 void server_write(int * sock_in, uint32_t key, int value_length){
 	int nbytes;
@@ -107,7 +110,7 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 		perror("Allocating buffer");
 		close(*sock_in);
 		close(listener);
-		kv_delete_list(database);
+		kv_delete_database(database);
 		exit(-1);
 	}else{
 		/* Receive value */
@@ -126,7 +129,7 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 					perror("Allocating nodes on database");
 					close(*sock_in);
 					close(listener);
-					kv_delete_list(database);
+					kv_delete_database(database);
 					exit(-1);
 				}else{
 					msg.operation = KV_SUCCESS;
@@ -214,7 +217,7 @@ void * database_handler(void * arg){
 				perror("Message operation");
 				close(sock_in);
 				close(listener);
-				kv_delete_list(database);
+				kv_delete_database(database);
 				exit(-1);
 		}
 	}
@@ -222,6 +225,19 @@ void * database_handler(void * arg){
 
 /* Function meant to receive commands from keyboard */
 void keyboard_handler(void * arg){
+	char input[BUFFSIZE];
+	
+	while(1){
+        if(fgets(input, BUFFSIZE, stdin) == NULL){
+            perror("fgets");
+            close(listener);
+            kv_delete_database(database);
+            exit(-1);
+        }
+        
+        printf("Commands not yet implemented.\n");
+	}
+
 	return;
 }
 
@@ -231,7 +247,12 @@ int main(){
 	// pthread_t keyboard_thread;
 
 	signal(SIGINT, sig_handler);
-	server_init();
+	listener = server_init(BACKLOG);
+	if((database = database_init()) == NULL){
+		perror("Database");
+		close(listener);
+		exit(-1);
+	}
 
     if(DEBUG)
         database_handler(NULL);
@@ -244,7 +265,7 @@ int main(){
             }
         }
         printf("All threads deployed\n");
-        sleep(300);
+        keyboard_handler(NULL);
     }
 
     exit(0);

@@ -8,7 +8,7 @@ all: clean client server
 server: psiskv_server.c psiskv_database.o $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-client: psiskv_client.c psiskv_lib.o
+client: psiskv_client.c psiskv_lib.o $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 %.o: %.c %.h
