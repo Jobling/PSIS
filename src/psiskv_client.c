@@ -1,3 +1,4 @@
+#include <signal.h>
 #include "psiskv_lib.h"
 
 #define SERVER_IP "127.0.0.1"
@@ -9,6 +10,21 @@
 #define READ 1
 #define DELETE 2
 #define EXIT 3
+
+int kv_socket;
+
+/* Handle SIGINT signal to perform
+ * a clean shutdown of the client */
+void sig_handler(int sig_number){
+	if (sig_number == SIGINT){
+		printf("\nExiting cleanly. Use EXIT command.\n");
+		close(kv_socket);
+		exit(0);
+	}else{
+		printf("Unexpected signal\n");
+		exit(-1);
+	}
+}
 
 /* Function used to turn input
  * command into switchable variable*/
@@ -42,8 +58,9 @@ int main(int argc, char ** argv){
     char value[BUFFSIZE];
     char command[BUFFSIZE];
     uint32_t key;
-    int kv_socket = -1;
     int arg_num;
+
+    signal(SIGINT, sig_handler);
 
     if((kv_socket = kv_connect(SERVER_IP, SERVER_PORT)) == -1)
         exit(-1);

@@ -18,7 +18,7 @@
 #define DEBUG 1
 
 /* Global variables */
-kv_data database;
+kv_data database[DATA_PRIME];
 int listener;
 
 /* Handle SIGINT signal to perform
@@ -27,7 +27,7 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		close(listener);
-		kv_delete_list(&database);
+		kv_delete_list(database);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -107,7 +107,7 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 		perror("Allocating buffer");
 		close(*sock_in);
 		close(listener);
-		kv_delete_list(&database);
+		kv_delete_list(database);
 		exit(-1);
 	}else{
 		/* Receive value */
@@ -122,11 +122,11 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 			default:
 				/* Store value on database, with given key */
                 value[value_length - 1] = '\0';
-				if(kv_add_node(&database, key, value) == -1){
+				if(kv_add_node(database, key, value) == -1){
 					perror("Allocating nodes on database");
 					close(*sock_in);
 					close(listener);
-					kv_delete_list(&database);
+					kv_delete_list(database);
 					exit(-1);
 				}else{
 					msg.operation = KV_SUCCESS;
@@ -148,7 +148,7 @@ void server_read(int * sock_in, uint32_t key){
 	value = NULL;
 
 	/* Read data from database */
-	if(kv_read_node(&database, key, &value) == 0){
+	if(kv_read_node(database, key, &value) == 0){
 		/* Send data to client (in case of success) */
 		if((nbytes = send(*sock_in, value, strlen(value) + 1, 0)) == -1)
 			error_and_close(sock_in, "Failed to send message content.\n");
@@ -167,7 +167,7 @@ void server_delete(int * sock_in, uint32_t key){
 	int nbytes;
 
 	/* Delete node from database */
-	if(kv_delete_node(&database, key) == -1){
+	if(kv_delete_node(database, key) == -1){
         printf("Warning: Key not in database.\n");
         msg.operation = KV_FAILURE;
 		if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1)
@@ -214,7 +214,7 @@ void * database_handler(void * arg){
 				perror("Message operation");
 				close(sock_in);
 				close(listener);
-				kv_delete_list(&database);
+				kv_delete_list(database);
 				exit(-1);
 		}
 	}

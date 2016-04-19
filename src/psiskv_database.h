@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define DATA_PRIME 199
+
 typedef struct key_value_node{
 	uint32_t key;
 	char * value;
