@@ -23,6 +23,10 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
     int index = key % DATA_PRIME;
     
 	/* In case the linkedlist is empty, a new one is created */
+	/* --- CRITICAL REGION --- 
+	 * - WRITE after WRITE may induce duplicate malloc 
+	 * - READ key 0 (malloc default) may induce NULL value 
+	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */ 
 	if(head[index] == NULL){
 		head[index] = (kv_data) malloc(sizeof(struct key_value_node));
 		if(head[index] == NULL)
@@ -31,6 +35,8 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 		(head[index])->key = key;
 		(head[index])->value = value;
 		(head[index])->next = NULL;
+	/* --- END OF CRITICAL REGION --- */
+
 
 	/* Otherwise the key-value pair will be added at the end of the list */
 	}else{
@@ -40,8 +46,14 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 			/* If another node with same key exists */
 			if(aux->key == key){
 				if(overwrite){
+					/* --- CRITICAL REGION ---
+					 * - WRITE after WRITE may induce duplicate free
+					 * - READ may induce NULL value
+					 * - DELETE may induce duplicate free */
 					free(aux->value);
 					aux->value = value;
+					/* --- END OF CRITICAL REGION --- */
+					
 					break;
 				}else{
 					free(value);
@@ -50,6 +62,10 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 				}
 			}
             /* If the list is ending, add new node */
+            
+            /* --- CRITICAL REGION 
+             * - WRITE after WRITE may induce duplicate malloc
+             * - DELETE may not deallocate newly allocated memory */
             if(aux->next == NULL){
                 /* Creating new node */
                 kv_data new_node;
@@ -63,8 +79,14 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
                 new_node->next = NULL;
                 aux->next = new_node;
                 
+                /* --- END OF CRITICAL REGION */
+                
                 break;
             }else{
+				/* Ordered insert */
+				/* --- CRITICAL REGION 
+				 * - WRITE after WRITE may induce duplicate malloc
+				 * - DELETE may not deallocate newly allocated memory */
                 if(aux->next->key > key){
                     /* Creating new node */
                     kv_data new_node;
@@ -77,6 +99,8 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
                     new_node->value = value;
                     new_node->next = aux->next;
                     aux->next = new_node;
+                    
+                    /* --- END OF CRITICAL REGION */
                     
                     break;
                 }
@@ -120,6 +144,10 @@ int kv_read_node(kv_data * head, uint32_t key, char ** value){
 int kv_delete_node(kv_data * head, uint32_t key){
 	int index = key % DATA_PRIME;
     
+	/* --- CRITICAL REGION --- 
+	 * - WRITE after WRITE may induce duplicate malloc 
+	 * - READ key 0 (malloc default) may induce NULL value 
+	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */ 
     if(head[index] == NULL)
         return -1;
         
@@ -146,9 +174,11 @@ int kv_delete_node(kv_data * head, uint32_t key){
                 return -1;
 		}
 	}
-
+	
 	return -1;
 }
+
+
 
 /* This function is used to cleanup
  * memory used by the linked list */
