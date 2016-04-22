@@ -4,8 +4,9 @@
 #include <stdint.h>
 
 #define KV_READ 0
-#define KV_WRITE 1
-#define KV_DELETE 2
+#define KV_OVERWRITE 1
+#define KV_WRITE 2
+#define KV_DELETE 3
 
 #define KV_SUCCESS 200
 #define KV_FAILURE 400

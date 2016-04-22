@@ -6,7 +6,6 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <string.h>
 
 #include "message.h"
@@ -21,6 +20,7 @@
 /* Global variables */
 kv_data * database;
 int listener;
+pthread_mutex_t mutex;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
@@ -29,6 +29,7 @@ void sig_handler(int sig_number){
 		printf("\nExiting cleanly\n");
 		close(listener);
 		kv_delete_database(database);
+		pthread_mutex_destroy(&mutex);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -99,7 +100,7 @@ int server_init(int backlog){
 }
 
 /* Handle KV_WRITE operations */
-void server_write(int * sock_in, uint32_t key, int value_length){
+void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 	int nbytes;
 	char * value;
 	message msg;
@@ -125,18 +126,27 @@ void server_write(int * sock_in, uint32_t key, int value_length){
 			default:
 				/* Store value on database, with given key */
                 value[value_length - 1] = '\0';
-				if(kv_add_node(database, key, value) == -1){
-					perror("Allocating nodes on database");
-					close(*sock_in);
-					close(listener);
-					kv_delete_database(database);
-					exit(-1);
-				}else{
-					msg.operation = KV_SUCCESS;
-					if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
-						error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
-					}
+                switch(kv_add_node(database, key, value, overwrite)){
+					case(-1):
+						perror("Allocating nodes on database");
+						close(*sock_in);
+						close(listener);
+						kv_delete_database(database);
+						exit(-1);
+					case(0):
+						msg.operation = KV_SUCCESS;
+						if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
+							error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
+						}
+						break;
+					case(-2):
+						msg.operation = KV_FAILURE;
+						if((nbytes = send(*sock_in, &msg, sizeof(message), 0)) == -1){
+							error_and_close(sock_in, "Failed to send KV_WRITE FAILURE.\n");
+						}
+						break;
 				}
+				break;
 		}
 	}
 
@@ -185,6 +195,7 @@ void server_delete(int * sock_in, uint32_t key){
 
 /* Threaded service management function */
 void * database_handler(void * arg){
+	int overwrite;
 	message msg;
 	socklen_t addr_size;
 	struct sockaddr_in client_addr;
@@ -207,7 +218,9 @@ void * database_handler(void * arg){
 				server_read(&sock_in, msg.key);
 				break;
 			case(KV_WRITE):
-				server_write(&sock_in, msg.key, msg.data_length);
+			case(KV_OVERWRITE):
+				overwrite = (msg.operation == KV_OVERWRITE) ? 1 : 0;
+				server_write(&sock_in, msg.key, msg.data_length, overwrite);
 				break;
 			case(KV_DELETE):
 				server_delete(&sock_in, msg.key);
@@ -248,7 +261,7 @@ int main(){
 
 	signal(SIGINT, sig_handler);
 	listener = server_init(BACKLOG);
-	if((database = database_init()) == NULL){
+	if(database_init()){
 		perror("Database");
 		close(listener);
 		exit(-1);
@@ -257,6 +270,12 @@ int main(){
     if(DEBUG)
         database_handler(NULL);
     else{
+		if(pthread_mutex_init(&mutex, NULL) != 0){
+			perror("Mutex");
+			close(listener);
+			kv_delete_database(database);
+			exit(-1);
+		}
         for(i = 0; i < NUM_THREADS; i++){
             if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
                 perror("Creating threads");

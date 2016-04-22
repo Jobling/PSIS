@@ -41,15 +41,19 @@ void kv_close(int kv_descriptor){
 /* This function contacts the key-value store and stores
  * the pair (key, value). The value is an array of bytes
  * with length of value_length.
+ * 
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. */
-int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
+ * This function returns -1 in case of error.
+ *  
+ * If kv_overwrite is 0 and the key already exist 
+ * in the server the function will fail and return -2.*/
+int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, int kv_overwrite){
 	message msg;
 	int nbytes;
 
 	/* Creating message header */
-	msg.operation = KV_WRITE;
+	msg.operation = (kv_overwrite) ? KV_OVERWRITE : KV_WRITE;
 	msg.key = key;
 	msg.data_length = value_length;
 
@@ -76,11 +80,17 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length){
 			return -1;
 		default:
 			/* Check for success */
-			if(msg.operation != KV_SUCCESS){
-				printf("Warning: Unexpected error.\n");
-				return -1;
-			}else
+			if(msg.operation == KV_SUCCESS){
 				return 0;
+			}else{
+				if(kv_overwrite){
+					printf("Warning: Unexpected error.\n");
+					return -1;
+				}else{
+					printf("Warning: Key already exists.\n");
+					return -2;					
+				}
+			}
 	}
 }
 

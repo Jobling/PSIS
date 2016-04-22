@@ -1,11 +1,15 @@
 #include "psiskv_database.h"
 
+extern pthread_mutex_t mutex;
+extern kv_data * database;
+
 /* This function allocates memoru for database structure */
-kv_data * database_init(){
-	kv_data * new_database;
-	new_database = (kv_data *) malloc(DATA_PRIME * sizeof(kv_data));
-	
-	return new_database;
+int database_init(){
+	database = (kv_data *) malloc(DATA_PRIME * sizeof(kv_data));
+	if(database == NULL)
+		return -1;
+	else
+		return 0;
 }
 
 /* This function adds a key_value_node to the linkedlist
@@ -13,8 +17,9 @@ kv_data * database_init(){
  * will be overwritten (the old value is freed and the new value is kept)
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error (always malloc error) */
-int kv_add_node(kv_data * head, uint32_t key, char * value){
+ * This function returns -2 in case of existent key (and no overwrite)
+ * Otherwise this function returns -1 in case of error (always malloc error) */
+int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
     int index = key % DATA_PRIME;
     
 	/* In case the linkedlist is empty, a new one is created */
@@ -32,11 +37,17 @@ int kv_add_node(kv_data * head, uint32_t key, char * value){
 		kv_data aux;
 		/* Travel through the list */
 		for(aux = (head[index]); aux != NULL; aux = aux->next){
-			/* If another node with same key exists, value is overwritten */
+			/* If another node with same key exists */
 			if(aux->key == key){
-				free(aux->value);
-				aux->value = value;
-                break;
+				if(overwrite){
+					free(aux->value);
+					aux->value = value;
+					break;
+				}else{
+					free(value);
+					value = NULL;
+					return -2;
+				}
 			}
             /* If the list is ending, add new node */
             if(aux->next == NULL){

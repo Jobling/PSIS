@@ -7,9 +7,10 @@
 
 #define NO_CMD -1
 #define WRITE 0
-#define READ 1
-#define DELETE 2
-#define EXIT 3
+#define OVERWRITE 1
+#define READ 2
+#define DELETE 3
+#define EXIT 4
 
 int kv_socket;
 
@@ -31,6 +32,8 @@ void sig_handler(int sig_number){
 int get_command(char * command){
     if(strcasecmp(command, "write") == 0)
         return WRITE;
+    else if(strcasecmp(command, "overwrite") == 0)
+		return OVERWRITE;
     else if(strcasecmp(command, "read") == 0)
         return READ;
     else if(strcasecmp(command, "delete") == 0)
@@ -42,14 +45,15 @@ int get_command(char * command){
 
 /* Function used to print user friendly interface */
 void print_interface(){
-    printf("***************************\n");
-    printf("* Possible commands:      *\n");
-    printf("***************************\n");
-    printf("* WRITE     <key> <value> *\n");
-    printf("* READ      <key>         *\n");
-    printf("* DELETE    <key>         *\n");
-    printf("* EXIT                    *\n");
-    printf("***************************\n");
+    printf("****************************\n");
+    printf("* Possible commands:       *\n");
+    printf("****************************\n");
+    printf("* WRITE      <key> <value> *\n");
+    printf("* OVERWRITE  <key> <value> *\n");
+    printf("* READ       <key>         *\n");
+    printf("* DELETE     <key>         *\n");
+    printf("* EXIT                     *\n");
+    printf("****************************\n");
     return;
 }
 
@@ -87,14 +91,33 @@ int main(int argc, char ** argv){
                     printf("Incorrect number of arguments.\n");
                 else{
                     /* Writing on server */
-                    if(kv_write(kv_socket, key, value, sizeof(value) + 1) == 0)
-                        printf("KV_WRITE successful.\n");
-                    else{
-                        kv_close(kv_socket);
-                        exit(-1);
-                    }
+                    switch(kv_write(kv_socket, key, value, sizeof(value) + 1, 0)){
+						case(0):
+							printf("KV_WRITE successful.\n");
+						case(-2):
+							break;
+						case(-1):
+							kv_close(kv_socket);
+							exit(-1);
+					}
                 }
                 break;
+			case(OVERWRITE):
+                if(arg_num < 3)
+                    printf("Incorrect number of arguments.\n");
+                else{
+                    /* Writing on server */
+                    switch(kv_write(kv_socket, key, value, sizeof(value) + 1, 1)){
+						case(0):
+							printf("KV_OVERWRITE successful.\n");
+						case(-2):
+							break;
+						case(-1):
+							kv_close(kv_socket);
+							exit(-1);
+					}
+                }
+                break;                
             case(READ):
                 if(arg_num < 2)
                     printf("Incorrect number of arguments.\n");
@@ -144,3 +167,4 @@ int main(int argc, char ** argv){
     }
     exit(0);
 }
+
