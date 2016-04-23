@@ -117,7 +117,7 @@ int main(int argc, char ** argv){
 							exit(-1);
 					}
                 }
-                break;                
+                break;
             case(READ):
                 if(arg_num < 2)
                     printf("Incorrect number of arguments.\n");
@@ -167,4 +167,3 @@ int main(int argc, char ** argv){
     }
     exit(0);
 }
-
