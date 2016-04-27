@@ -100,7 +100,7 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
  *
  * This function returns 0 in case of success.
  * This function returns -1 in case of error.
- * This function returns 1 in case of key not on database */
+ * This function returns -2 in case of key not on database */
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	message msg;
 	int nbytes;
@@ -128,7 +128,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 		default:
 			if(strcmp(value, KV_NOT_FOUND) == 0){
 				printf("Key not in database.\n");
-				return 1;
+				return -2;
 			}else
 				return 0;
 	}

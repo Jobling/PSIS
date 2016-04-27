@@ -1,7 +1,36 @@
 #include "psiskv_database.h"
 
-extern pthread_mutex_t mutex;
+extern synch mutex;
 extern kv_data * database;
+
+/* This function prints the database contents on the terminal */
+void print_database(){
+	int i;
+	kv_data aux;
+	
+	for(i = 0; i < DATA_PRIME; i++){
+		printf("# - %d\n", i);
+		for(aux = database[i]; aux != NULL; aux = aux->next){
+			printf("\t%u - %s\n", aux->key, aux->value);
+		}
+	}
+}
+
+/* This function initializes mutex */
+int synch_init(){
+	if(pthread_mutex_init(&mutex.head, NULL) != 0)
+		return -1;
+	if(pthread_mutex_init(&mutex.value, NULL) != 0)
+		return -1;
+		
+	return 0;
+}
+
+/* This function is used for cleanup */
+void kv_delete_synch(){
+	pthread_mutex_destroy(&mutex.head);
+	pthread_mutex_destroy(&mutex.value);
+}
 
 /* This function allocates memoru for database structure */
 int database_init(){
@@ -27,6 +56,8 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 	 * - WRITE after WRITE may induce duplicate malloc 
 	 * - READ key 0 (malloc default) may induce NULL value 
 	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */ 
+	
+	pthread_mutex_lock(&mutex.head); 
 	if(head[index] == NULL){
 		head[index] = (kv_data) malloc(sizeof(struct key_value_node));
 		if(head[index] == NULL)
@@ -35,11 +66,14 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 		(head[index])->key = key;
 		(head[index])->value = value;
 		(head[index])->next = NULL;
-	/* --- END OF CRITICAL REGION --- */
-
+		/* --- END OF CRITICAL REGION --- */
+	
+		pthread_mutex_unlock(&mutex.head);
 
 	/* Otherwise the key-value pair will be added at the end of the list */
 	}else{
+		pthread_mutex_unlock(&mutex.head);
+		
 		kv_data aux;
 		/* Travel through the list */
 		for(aux = (head[index]); aux != NULL; aux = aux->next){
@@ -50,9 +84,11 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 					 * - WRITE after WRITE may induce duplicate free
 					 * - READ may induce NULL value
 					 * - DELETE may induce duplicate free */
+					pthread_mutex_lock(&mutex.value);
 					free(aux->value);
 					aux->value = value;
 					/* --- END OF CRITICAL REGION --- */
+					pthread_mutex_unlock(&mutex.value);
 					
 					break;
 				}else{
@@ -63,7 +99,7 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 			}
             /* If the list is ending, add new node */
             
-            /* --- CRITICAL REGION 
+            /* --- CRITICAL REGION ---
              * - WRITE after WRITE may induce duplicate malloc
              * - DELETE may not deallocate newly allocated memory */
             if(aux->next == NULL){
@@ -79,12 +115,12 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
                 new_node->next = NULL;
                 aux->next = new_node;
                 
-                /* --- END OF CRITICAL REGION */
+                /* --- END OF CRITICAL REGION --- */
                 
                 break;
             }else{
 				/* Ordered insert */
-				/* --- CRITICAL REGION 
+				/* --- CRITICAL REGION ---
 				 * - WRITE after WRITE may induce duplicate malloc
 				 * - DELETE may not deallocate newly allocated memory */
                 if(aux->next->key > key){
@@ -100,7 +136,7 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
                     new_node->next = aux->next;
                     aux->next = new_node;
                     
-                    /* --- END OF CRITICAL REGION */
+                    /* --- END OF CRITICAL REGION --- */
                     
                     break;
                 }
@@ -178,22 +214,20 @@ int kv_delete_node(kv_data * head, uint32_t key){
 	return -1;
 }
 
-
-
 /* This function is used to cleanup
  * memory used by the linked list */
-void kv_delete_database(kv_data * head){
+void kv_delete_database(){
 	kv_data aux;
     int i;
     for(i = 0; i < DATA_PRIME; i++){
-        while(head[i] != NULL){
-            aux = head[i];
-            head[i] = (head[i])->next;
+        while(database[i] != NULL){
+            aux = database[i];
+            database[i] = (database[i])->next;
             free(aux->value);
             free(aux);
         }
     }
-    free(head);
+    free(database);
 	return;
 }
 

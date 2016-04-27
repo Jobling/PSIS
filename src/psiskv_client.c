@@ -127,7 +127,7 @@ int main(int argc, char ** argv){
                         case(-1):
                             kv_close(kv_socket);
                             exit(-1);
-                        case(1):
+                        case(-2):
                             break;
                         case(0):
                             printf("KV_READ successful: %s\n", value);

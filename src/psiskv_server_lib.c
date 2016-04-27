@@ -77,7 +77,8 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 		perror("Allocating buffer");
 		close(*sock_in);
 		close(listener);
-		kv_delete_database(database);
+		kv_delete_synch();
+		kv_delete_database();
 		exit(-1);
 	}else{
 		/* Receive value */
@@ -97,7 +98,8 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 						perror("Allocating nodes on database");
 						close(*sock_in);
 						close(listener);
-						kv_delete_database(database);
+						kv_delete_synch();
+						kv_delete_database();
 						exit(-1);
 					case(0):
 						msg.operation = KV_SUCCESS;
