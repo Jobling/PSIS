@@ -16,7 +16,7 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		close(listener);
-		kv_delete_database();
+		kv_delete_database(-1);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -61,7 +61,7 @@ void * database_handler(void * arg){
 				perror("Message operation");
 				close(sock_in);
 				close(listener);
-				kv_delete_database();
+				kv_delete_database(-1);
 				exit(-1);
 		}
 	}
@@ -75,7 +75,7 @@ void keyboard_handler(void * arg){
         if(fgets(input, BUFFSIZE, stdin) == NULL){
             perror("fgets");
             close(listener);
-            kv_delete_database();
+            kv_delete_database(-1);
             exit(-1);
         }
         if(strcasecmp(input, "print\n") == 0){
@@ -109,7 +109,7 @@ int main(){
             if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
                 perror("Creating threads");
                 close(listener);
-                kv_delete_database();
+                kv_delete_database(-1);
                 exit(-1);
             }
         }

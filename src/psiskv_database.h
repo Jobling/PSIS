@@ -9,6 +9,9 @@
 
 #define DATA_PRIME 2
 
+#define DATABASE_EQUAL 0
+#define DATABASE_NOT_EQUAL 1
+
 typedef struct key_value_node{
 	uint32_t key;
 	char * value;
@@ -25,9 +28,10 @@ void kv_delete_mutex(int index);
 
 /* --- Database core functions --- */
 int database_init();
+void kv_delete_database(int index);
 int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite);
 int kv_read_node(kv_data * head, uint32_t key, char ** value);
 int kv_delete_node(kv_data * head, uint32_t key);
-void kv_delete_database();
+
 
 #endif
