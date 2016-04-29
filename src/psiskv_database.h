@@ -5,13 +5,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <string.h>
 
 #define DATA_PRIME 2
-
-typedef struct{
-	pthread_mutex_t head[DATA_PRIME];
-	pthread_mutex_t value;
-} synch;
 
 typedef struct key_value_node{
 	uint32_t key;
@@ -24,8 +20,8 @@ typedef struct key_value_node{
 void print_database();
 
 /* --- Mutex core functions --- */
-int synch_init();
-void kv_delete_synch();
+int mutex_init();
+void kv_delete_mutex(int index);
 
 /* --- Database core functions --- */
 int database_init();

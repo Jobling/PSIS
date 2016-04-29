@@ -77,7 +77,6 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 		perror("Allocating buffer");
 		close(*sock_in);
 		close(listener);
-		kv_delete_synch();
 		kv_delete_database();
 		exit(-1);
 	}else{
@@ -98,7 +97,6 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 						perror("Allocating nodes on database");
 						close(*sock_in);
 						close(listener);
-						kv_delete_synch();
 						kv_delete_database();
 						exit(-1);
 					case(0):
@@ -133,6 +131,8 @@ void server_read(int * sock_in, uint32_t key){
 		/* Send data to client (in case of success) */
 		if((nbytes = send(*sock_in, value, strlen(value) + 1, 0)) == -1)
 			error_and_close(sock_in, "Failed to send message content.\n");
+			
+		free(value);
 	}else{
         printf("Warning: Failed to read key from database.\n");
 		if((nbytes = send(*sock_in, KV_NOT_FOUND, sizeof(KV_NOT_FOUND), 0)) == -1)

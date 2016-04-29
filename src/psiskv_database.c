@@ -1,6 +1,6 @@
 #include "psiskv_database.h"
 
-extern synch mutex;
+pthread_mutex_t mutex[DATA_PRIME];
 extern kv_data * database;
 
 /* This function prints the database contents on the terminal */
@@ -17,28 +17,35 @@ void print_database(){
 }
 
 /* This function initializes mutex */
-int synch_init(){
-	if(pthread_mutex_init(&mutex.head, NULL) != 0)
-		return -1;
-	if(pthread_mutex_init(&mutex.value, NULL) != 0)
-		return -1;
+int mutex_init(){
+	int i;
+	for(i = 0; i < DATA_PRIME; i++)
+		if(pthread_mutex_init(&mutex[i], NULL) != 0)
+			return i;
 		
 	return 0;
 }
 
 /* This function is used for cleanup */
-void kv_delete_synch(){
-	pthread_mutex_destroy(&mutex.head);
-	pthread_mutex_destroy(&mutex.value);
+void kv_delete_mutex(int index){
+	int i;
+	for(i = 0; i < index; i++)	
+		pthread_mutex_destroy(&mutex[i]);
 }
 
 /* This function allocates memoru for database structure */
 int database_init(){
-	database = (kv_data *) malloc(DATA_PRIME * sizeof(kv_data));
-	if(database == NULL)
+	int index;
+	if((index = mutex_init()) != 0){
+		kv_delete_mutex(index);
 		return -1;
-	else
-		return 0;
+	}else{
+		database = (kv_data *) malloc(DATA_PRIME * sizeof(kv_data));
+		if(database == NULL)
+			return -1;
+		else
+			return 0;
+	}
 }
 
 /* This function adds a key_value_node to the linkedlist
@@ -57,93 +64,102 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 	 * - READ key 0 (malloc default) may induce NULL value 
 	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */ 
 	
-	pthread_mutex_lock(&mutex.head); 
+	pthread_mutex_lock(&mutex[index]); 
 	if(head[index] == NULL){
 		head[index] = (kv_data) malloc(sizeof(struct key_value_node));
-		if(head[index] == NULL)
+		if(head[index] == NULL){
+			pthread_mutex_unlock(&mutex[index]); 
 			return -1;
+		}
 
 		(head[index])->key = key;
 		(head[index])->value = value;
 		(head[index])->next = NULL;
 		/* --- END OF CRITICAL REGION --- */
-	
-		pthread_mutex_unlock(&mutex.head);
 
 	/* Otherwise the key-value pair will be added at the end of the list */
-	}else{
-		pthread_mutex_unlock(&mutex.head);
-		
+	}else{		
 		kv_data aux;
 		/* Travel through the list */
-		for(aux = (head[index]); aux != NULL; aux = aux->next){
-			/* If another node with same key exists */
-			if(aux->key == key){
-				if(overwrite){
-					/* --- CRITICAL REGION ---
-					 * - WRITE after WRITE may induce duplicate free
-					 * - READ may induce NULL value
-					 * - DELETE may induce duplicate free */
-					pthread_mutex_lock(&mutex.value);
-					free(aux->value);
-					aux->value = value;
-					/* --- END OF CRITICAL REGION --- */
-					pthread_mutex_unlock(&mutex.value);
-					
-					break;
-				}else{
-					free(value);
-					value = NULL;
-					return -2;
-				}
+		if(head[index]->key > key){
+			aux = (kv_data) malloc(sizeof(struct key_value_node));
+			if(aux == NULL){
+				pthread_mutex_unlock(&mutex[index]); 
+				return -1;
 			}
-            /* If the list is ending, add new node */
-            
-            /* --- CRITICAL REGION ---
-             * - WRITE after WRITE may induce duplicate malloc
-             * - DELETE may not deallocate newly allocated memory */
-            if(aux->next == NULL){
-                /* Creating new node */
-                kv_data new_node;
-                new_node = (kv_data) malloc(sizeof(struct key_value_node));
-                if(new_node == NULL)
-                    return -1;
 
-                /* Storing node on the list */
-                new_node->key = key;
-                new_node->value = value;
-                new_node->next = NULL;
-                aux->next = new_node;
-                
-                /* --- END OF CRITICAL REGION --- */
-                
-                break;
-            }else{
-				/* Ordered insert */
+			aux->key = key;
+			aux->value = value;
+			aux->next = head[index];
+			head[index] = aux;
+		}else{
+			for(aux = (head[index]); aux != NULL; aux = aux->next){
+				/* If another node with same key exists */
+				if(aux->key == key){
+					if(overwrite){
+						/* --- CRITICAL REGION ---
+						 * - WRITE after WRITE may induce duplicate free
+						 * - READ may induce NULL value
+						 * - DELETE may induce duplicate free */
+						free(aux->value);
+						aux->value = value;
+						/* --- END OF CRITICAL REGION --- */
+						
+						break;
+					}else{
+						free(value);
+						value = NULL;
+						return -2;
+					}
+				}
+				/* If the list is ending, add new node */
+				
 				/* --- CRITICAL REGION ---
 				 * - WRITE after WRITE may induce duplicate malloc
 				 * - DELETE may not deallocate newly allocated memory */
-                if(aux->next->key > key){
-                    /* Creating new node */
-                    kv_data new_node;
-                    new_node = (kv_data) malloc(sizeof(struct key_value_node));
-                    if(new_node == NULL)
-                        return -1;
+				if(aux->next == NULL){
+					/* Creating new node */
+					kv_data new_node;
+					new_node = (kv_data) malloc(sizeof(struct key_value_node));
+					if(new_node == NULL)
+						return -1;
 
-                    /* Storing node on the list */
-                    new_node->key = key;
-                    new_node->value = value;
-                    new_node->next = aux->next;
-                    aux->next = new_node;
-                    
-                    /* --- END OF CRITICAL REGION --- */
-                    
-                    break;
-                }
-            }
-        }
-    }
-    
+					/* Storing node on the list */
+					new_node->key = key;
+					new_node->value = value;
+					new_node->next = NULL;
+					aux->next = new_node;
+					
+					/* --- END OF CRITICAL REGION --- */
+					
+					break;
+				}else{
+					/* Ordered insert */
+					/* --- CRITICAL REGION ---
+					 * - WRITE after WRITE may induce duplicate malloc
+					 * - DELETE may not deallocate newly allocated memory */
+					if(aux->next->key > key){
+						/* Creating new node */
+						kv_data new_node;
+						new_node = (kv_data) malloc(sizeof(struct key_value_node));
+						if(new_node == NULL)
+							return -1;
+
+						/* Storing node on the list */
+						new_node->key = key;
+						new_node->value = value;
+						new_node->next = aux->next;
+						aux->next = new_node;
+						
+						/* --- END OF CRITICAL REGION --- */
+						
+						break;
+					}
+				}
+			}
+		}
+	}
+    pthread_mutex_unlock(&mutex[index]);
     value = NULL;
     return 0;
 }
@@ -156,19 +172,25 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 int kv_read_node(kv_data * head, uint32_t key, char ** value){
 	int index = key % DATA_PRIME;
     
-    if(head[index] == NULL)
+    pthread_mutex_lock(&mutex[index]);
+    if(head[index] == NULL){
+		pthread_mutex_unlock(&mutex[index]);
         return -1;
+    }
     
     kv_data aux;
 	/* Travel through the list */
 	for(aux = head[index]; aux != NULL; aux = aux->next){
 		if(aux->key == key){
-            *value = aux->value;
+			*value = (char *) malloc(sizeof(aux->value) + 1);
+            memcpy(*value, aux->value, sizeof(aux->value) + 1);
+            pthread_mutex_unlock(&mutex[index]);
 			return 0;
 		}else if(aux->key > key)
-            return -1;
+			break;
 	}
 
+	pthread_mutex_unlock(&mutex[index]);
 	return -1;
 }
 
@@ -183,9 +205,12 @@ int kv_delete_node(kv_data * head, uint32_t key){
 	/* --- CRITICAL REGION --- 
 	 * - WRITE after WRITE may induce duplicate malloc 
 	 * - READ key 0 (malloc default) may induce NULL value 
-	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */ 
-    if(head[index] == NULL)
+	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */
+	 pthread_mutex_lock(&mutex[index]); 
+    if(head[index] == NULL){
+		pthread_mutex_unlock(&mutex[index]);
         return -1;
+	}
         
     kv_data aux;
 	/* Check if the firstnode has the key */
@@ -194,6 +219,7 @@ int kv_delete_node(kv_data * head, uint32_t key){
 		head[index] = (head[index])->next;
 		free(aux->value);
 		free(aux);
+		pthread_mutex_unlock(&mutex[index]);
 		return 0;
 	}else{
 		kv_data prev;
@@ -203,14 +229,15 @@ int kv_delete_node(kv_data * head, uint32_t key){
 				prev->next = aux->next;
 				free(aux->value);
 				free(aux);
+				pthread_mutex_unlock(&mutex[index]);
 				return 0;
 			}
             /* Keys are ordered */
             if(aux->key > key)
-                return -1;
+                break;
 		}
 	}
-	
+	pthread_mutex_unlock(&mutex[index]);
 	return -1;
 }
 
@@ -220,6 +247,7 @@ void kv_delete_database(){
 	kv_data aux;
     int i;
     for(i = 0; i < DATA_PRIME; i++){
+		pthread_mutex_lock(&mutex[i]);
         while(database[i] != NULL){
             aux = database[i];
             database[i] = (database[i])->next;
@@ -228,6 +256,7 @@ void kv_delete_database(){
         }
     }
     free(database);
+    kv_delete_mutex(DATA_PRIME);
 	return;
 }
 

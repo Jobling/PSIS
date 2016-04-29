@@ -9,7 +9,6 @@
 /* Global variables */
 int listener;
 kv_data * database;
-synch mutex;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
@@ -18,7 +17,6 @@ void sig_handler(int sig_number){
 		printf("\nExiting cleanly\n");
 		close(listener);
 		kv_delete_database();
-		kv_delete_synch();
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -63,7 +61,6 @@ void * database_handler(void * arg){
 				perror("Message operation");
 				close(sock_in);
 				close(listener);
-				kv_delete_synch();
 				kv_delete_database();
 				exit(-1);
 		}
@@ -78,7 +75,6 @@ void keyboard_handler(void * arg){
         if(fgets(input, BUFFSIZE, stdin) == NULL){
             perror("fgets");
             close(listener);
-            kv_delete_synch();
             kv_delete_database();
             exit(-1);
         }
@@ -109,17 +105,10 @@ int main(){
     if(DEBUG)
         database_handler(NULL);
     else{
-		if(synch_init() != 0){
-			perror("Mutex");
-			close(listener);
-			kv_delete_database();
-			exit(-1);
-		}
         for(i = 0; i < NUM_THREADS; i++){
             if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
                 perror("Creating threads");
                 close(listener);
-                kv_delete_synch();
                 kv_delete_database();
                 exit(-1);
             }
