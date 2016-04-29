@@ -88,17 +88,17 @@ kv_data travel(int index, uint32_t key, int * status){
 	
 	aux = database[index];
 	*status = DATABASE_NOT_EQUAL;
-	/* --- CRITICAL REGION  1 --- */
+	/* --- CRITICAL REGION --- */
+	pthread_mutex_lock(&mutex[index]);
 	while(aux->next != NULL){
 		if(aux->next->key == key){
 			*status = DATABASE_EQUAL;
-			aux = aux->next;
 			break;
 		}
 		if(aux->next->key > key) break;
+		aux = aux->next;
 	}
-	/* --- CRITICAL REGION 2 ---*/
-	/* --- END CRITICAL REGION 1 --- */
+	/* --- END CRITICAL REGION --- */
 	return aux;
 }
 
@@ -109,7 +109,7 @@ kv_data travel(int index, uint32_t key, int * status){
  * This function returns 0 in case of success.
  * This function returns -2 in case of existent key (and no overwrite)
  * Otherwise this function returns -1 in case of error (always malloc error) */
-int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
+int kv_add_node(uint32_t key, char * value, int overwrite){
     int index = key % DATA_PRIME;
     
     int status;
@@ -124,23 +124,33 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
 	new_node->key = key;
 	new_node->value = value;
     
-    /* Travel loop */
+    /* Travel Loop */
     aux = travel(index, key, &status);
     switch(status){
 		case DATABASE_EQUAL:
 			free(new_node);
 			if(overwrite){
-				free(aux->value);
-				aux->value = value;		
+				/* --- CRITICAL REGION --- */
+				free(aux->next->value);
+				aux->next->value = value;
+				pthread_mutex_unlock(&mutex[index]);
+				/* --- END CRITICAL REGION --- */		
 			}else{
+				pthread_mutex_unlock(&mutex[index]);
 				free(value);
 				value = NULL;
 				return -2;
 			}
 			break;
 		case DATABASE_NOT_EQUAL:
+			/* --- CRITICAL REGION --- */
 			new_node->next = aux->next;
 			aux->next = new_node;
+			pthread_mutex_unlock(&mutex[index]);
+			/* --- END CRITICAL REGION --- */
+			break;
+		default:
+			pthread_mutex_unlock(&mutex[index]);
 			break;
 	}
 	
@@ -153,28 +163,36 @@ int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite){
  *
  * This function returns the value in case of success.
  * This function returns NULL in case of error (key doesn't exist) */
-int kv_read_node(kv_data * head, uint32_t key, char ** value){
+int kv_read_node(uint32_t key, char ** value){
 	int index = key % DATA_PRIME;
     
     int status;
     kv_data aux;
     
-    /* Allocating memory */
-    *value = (char *) malloc(sizeof(aux->value) + 1);
-    if(*value == NULL)
-		return -1; 
-    
-    /* Travel loop */
+    /* Travel Loop */
     aux = travel(index, key, &status);
     switch(status){
 		case DATABASE_EQUAL:
-            memcpy(*value, aux->value, sizeof(aux->value) + 1);
+			/* --- CRITICAL REGION --- */
+			/* Allocating memory */
+			*value = (char *) malloc(sizeof(aux->value) + 1);
+			if(*value == NULL){
+				pthread_mutex_unlock(&mutex[index]);
+				return -1; 
+			}
+            memcpy(*value, aux->next->value, sizeof(aux->next->value) + 1);
+            pthread_mutex_unlock(&mutex[index]);
+            /* --- END CRITICAL REGION --- */
             return 0;
 		case DATABASE_NOT_EQUAL:
+			pthread_mutex_unlock(&mutex[index]);
 			free(*value);
 			return -1;
+		default:
+			pthread_mutex_unlock(&mutex[index]);
+			break;
 	}
-
+	return -1;
 }
 
 /* This function deletes a key-value pair from the linkedlist
@@ -182,44 +200,28 @@ int kv_read_node(kv_data * head, uint32_t key, char ** value){
  *
  * This function returns 0 in case of success.
  * This function returns -1 in case of error (key not in database) */
-int kv_delete_node(kv_data * head, uint32_t key){
+int kv_delete_node(uint32_t key){
 	int index = key % DATA_PRIME;
     
-	/* --- CRITICAL REGION --- 
-	 * - WRITE after WRITE may induce duplicate malloc 
-	 * - READ key 0 (malloc default) may induce NULL value 
-	 * - DELETE key 0 (malloc default) may induce free(value = NULL) */
-	 pthread_mutex_lock(&mutex[index]); 
-    if(head[index] == NULL){
-		pthread_mutex_unlock(&mutex[index]);
-        return -1;
+    int status;
+    kv_data aux, del;
+    
+    /* Travel Loop */
+    aux = travel(index, key, &status);
+    switch(status){
+		case DATABASE_EQUAL:
+			/* --- CRITICAL REGION --- */
+            del = aux->next;
+            aux->next = aux->next->next;
+            pthread_mutex_unlock(&mutex[index]);
+            /* --- END CRITICAL REGION --- */
+            free(del->value);
+            free(del);
+            return 0;
+		case DATABASE_NOT_EQUAL:
+		default:
+			pthread_mutex_unlock(&mutex[index]);
+			break;
 	}
-        
-    kv_data aux;
-	/* Check if the firstnode has the key */
-	if((head[index])->key == key){
-		aux = head[index];
-		head[index] = (head[index])->next;
-		free(aux->value);
-		free(aux);
-		pthread_mutex_unlock(&mutex[index]);
-		return 0;
-	}else{
-		kv_data prev;
-		/* Travel through the list */
-		for(prev = head[index], aux = (head[index])->next; aux != NULL; aux = aux->next, prev = prev->next){
-			if(aux->key == key){
-				prev->next = aux->next;
-				free(aux->value);
-				free(aux);
-				pthread_mutex_unlock(&mutex[index]);
-				return 0;
-			}
-            /* Keys are ordered */
-            if(aux->key > key)
-                break;
-		}
-	}
-	pthread_mutex_unlock(&mutex[index]);
 	return -1;
 }

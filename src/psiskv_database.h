@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <string.h>
 
-#define DATA_PRIME 2
+#define DATA_PRIME 211
 
 #define DATABASE_EQUAL 0
 #define DATABASE_NOT_EQUAL 1
@@ -29,9 +29,9 @@ void kv_delete_mutex(int index);
 /* --- Database core functions --- */
 int database_init();
 void kv_delete_database(int index);
-int kv_add_node(kv_data * head, uint32_t key, char * value, int overwrite);
-int kv_read_node(kv_data * head, uint32_t key, char ** value);
-int kv_delete_node(kv_data * head, uint32_t key);
+int kv_add_node(uint32_t key, char * value, int overwrite);
+int kv_read_node(uint32_t key, char ** value);
+int kv_delete_node(uint32_t key);
 
 
 #endif
