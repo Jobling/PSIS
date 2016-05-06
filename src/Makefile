@@ -3,11 +3,11 @@ CFLAGS = -Wall -g
 DEPS = message.h
 LIBS = -pthread
 
-all: clean client server 
+all: clean client data_server 
 
 test: prof-client-1 prof-client-2 test-client
 
-server: psiskv_server.c psiskv_database.o psiskv_server_lib.o $(DEPS)
+data_server: psiskv_data_server.c psiskv_database.o psiskv_server_lib.o $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 client: psiskv_client.c psiskv_lib.o $(DEPS)
