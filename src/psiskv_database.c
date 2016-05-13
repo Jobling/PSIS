@@ -1,5 +1,6 @@
 #include "psiskv_database.h"
 
+int backup_file;
 pthread_mutex_t mutex[DATA_PRIME];
 extern kv_data * database;
 
@@ -14,6 +15,90 @@ void print_database(){
 			printf("\t%u - %s\n", aux->key, aux->value);
 		}
 	}
+}
+
+/* This function writes the successful operations on the backup file 
+ * 
+ * This function return 0 on success 
+ * This function returns -1 on erro (malloc?) */
+int write_backup(int operation, uint32_t key, int value_size, char * value){
+	void * buffer;
+	int msg_buffer[3];
+	
+	msg_buffer[0] = operation;
+	msg_buffer[1] = (int) key;
+	msg_buffer[2] = value_size;
+	
+	switch(operation){
+		case(BACKUP_WRITE):
+			buffer = (void *) malloc((3 * sizeof(int)) + (value_size * sizeof(char)));
+			if(value_buffer == NULL){
+				perror("Allocating backup write buffer");
+				kv_delete_database(-1);
+				close(backup_file);
+				exit(-1);
+			}
+			
+			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
+			memcpy(&(buffer[sizeof(msg_buffer)]), (void *) value, sizeof(value));
+			
+			/* WRITE HERE */
+			
+			break;
+		case(BACKUP_DELETE):
+			break;
+	}
+	
+	
+	return 0;
+}
+
+/* This function restores database based on backup file 
+ * 
+ * This function returns 0 on success
+ * This function returns -1 on failure */
+int restore_backup(){
+	int n, overwrite;
+	int msg_buffer[3];
+	int value_size;
+	char * value_buffer;
+	
+	while((n = read(backup_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
+		switch(msg_buffer[0]){
+			case(BACKUP_WRITE):
+				value_size = msg_buffer[2] * sizeof(char);
+				
+				/* Allocate memory for variable */
+				value_buffer = (char *) malloc(value_size);
+				if(value_buffer == NULL){
+					perror("Allocating backup read buffer");
+					kv_delete_database(-1);
+					close(backup_file);
+					exit(-1);
+				}else if((n = read(backup_file, (void *) value_buffer, value_size)) > 0){
+					if(kv_add_node((uint32_t) msg_buffer[1], value_buffer, 1) == -1){
+						perror("Allocating nodes on database");
+						kv_delete_database(-1);
+						close(backup_file);
+						exit(-1);
+					}
+				}else{
+					perror("Possible error on backup read");
+					kv_delete_database(-1);
+					close(backup_file);
+					exit(-1);
+				}
+				break;
+			case(BACKUP_DELETE):
+				kv_delete_node(msg_buffer[1]);
+				break;
+			default:
+				/* Just in case */
+				break;
+		}
+	}
+	
+	return n; 
 }
 
 /* This function is used for cleanup */
@@ -59,6 +144,19 @@ int mutex_init(){
 /* This function allocates memoru for database structure */
 int database_init(){
 	int index;
+	
+	/* Setting backup file */
+	if((backup_file = open(BACKUP_NAME, O_RDWR | O_CREAT | O_EXCL, BACKUP_MODE)) == -1){
+		switch(errno){
+			case(EEXIST):
+				if((backup_file = open(BACKUP_NAME, O_RDWR)) != -1) 
+					break;
+			default:
+				return -1;
+				break;
+		}
+	}
+	
 	if((index = mutex_init()) != 0){
 		kv_delete_mutex(index);
 		return -1;
@@ -77,8 +175,18 @@ int database_init(){
 				(database[index])->next = NULL;
 			}
 			
+			if(restore_backup() == -1){
+				perror("Error on backup read");
+				kv_delete_database(-1);
+				close(backup_file);
+				exit(-1);
+			}
+			
 			return 0;
-		}else return -1;
+		}else{
+			kv_delete_mutex(-1);
+			return -1;
+		}
 	}
 }
 
@@ -113,6 +221,7 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
     int index = key % DATA_PRIME;
     
     int status;
+    char * old_value;
     kv_data aux, new_node;
     
     /* Allocating memory */
@@ -130,11 +239,12 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
 		case DATABASE_EQUAL:
 			free(new_node);
 			if(overwrite){
+				old_value = aux->next->value;
 				/* --- CRITICAL REGION --- */
-				free(aux->next->value);
 				aux->next->value = value;
 				pthread_mutex_unlock(&mutex[index]);
-				/* --- END CRITICAL REGION --- */		
+				/* --- END CRITICAL REGION --- */
+				free(old_value);		
 			}else{
 				pthread_mutex_unlock(&mutex[index]);
 				free(value);

@@ -35,7 +35,7 @@ void * database_handler(void * arg){
 	addr_size = sizeof(client_addr);
 
 	while(1){
-		/* Accept first connection. */
+		/* Accept connection. */
 		if(sock_in == -1)
 			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 

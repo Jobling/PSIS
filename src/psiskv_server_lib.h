@@ -10,14 +10,10 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
-#include <fcntl.h>
+
 
 #include "message.h"
 #include "psiskv_database.h"
-
-#define BACKUP_NAME "backup"
-#define BACKUP_FLAGS O_RDWR | O_CREAT
-#define BACKUP_MODE  S_IROTH | S_IWOTH
 
 /* --- Auxiliary functions --- */
 void error_and_close(int * sock_in, char * warning);

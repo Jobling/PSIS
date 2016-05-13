@@ -8,7 +8,6 @@
 
 /* Global variables */
 int listener;
-int backup_file;
 kv_data * database;
 
 /* Handle SIGINT signal to perform
@@ -96,7 +95,6 @@ int main(){
 	// pthread_t keyboard_thread;
 
 	signal(SIGINT, sig_handler);
-	backup_file = open(BACKUP_NAME, BACKUP_FLAGS, BACKUP_MODE);
 	
 	listener = server_init(BACKLOG);
 	if(database_init()){

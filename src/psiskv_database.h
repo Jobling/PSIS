@@ -6,11 +6,23 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 
 #define DATA_PRIME 211
 
 #define DATABASE_EQUAL 0
 #define DATABASE_NOT_EQUAL 1
+
+#define BACKUP_WRITE 1
+#define BACKUP_DELETE 2
+
+#define BACKUP_NAME "backup"
+#define BACKUP_MODE  S_IROTH | S_IWOTH
 
 typedef struct key_value_node{
 	uint32_t key;
@@ -21,6 +33,8 @@ typedef struct key_value_node{
 
 /* --- Auxiliary Functions --- */
 void print_database();
+int write_backup(int operation, uint32_t key, int value_size, char * value);
+int restore_backup();
 
 /* --- Mutex core functions --- */
 int mutex_init();
