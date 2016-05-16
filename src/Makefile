@@ -1,32 +1,68 @@
 CC = gcc
 CFLAGS = -Wall -g
-DEPS = message.h
 LIBS = -pthread
+EDITOR = geany
 
-all: clean client data_server 
+IDIR = ../include
+ODIR = obj
 
-test: prof-client-1 prof-client-2 test-client
+##########################################
+# $(patsubst pattern,replacement,$(var)) #
+# $(var:pattern=rplacement)              #
+##########################################
 
-data_server: psiskv_data_server.c psiskv_database.o psiskv_server_lib.o $(DEPS)
+#### MAKING #####
+_DEPS = message.h
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
+
+_OBJ = psiskv_database.o psiskv_server_lib.o psiskv_lib.o
+OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+
+#### LOOK AT THIS #####
+
+all: clean client data_server
+
+######### Main objects for program usage #############
+# client: program used for client side               #
+# server: main server program                        #
+# data_server: data server program (child of server) #
+######################################################
+
+client: psiskv_client.c $(OBJ) $(DEPS)
+	$(CC) -o $@ $^ $(CFLAGS)
+
+data_server: psiskv_data_server.c $(OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-client: psiskv_client.c psiskv_lib.o $(DEPS)
-	$(CC) -o $@ $^ $(CFLAGS)
-	
-prof-client-1: cli-exe-1.c psiskv_lib.o $(DEPS)
-	$(CC) -o $@ $^ $(CFLAGS)
-	
-prof-client-2: cli-exe-par-1.c psiskv_lib.o $(DEPS)
-	$(CC) -o $@ $^ $(CFLAGS)
-	
-test-client: cli-exe-sync.c psiskv_lib.o $(DEPS)
-	$(CC) -o $@ $^ $(CFLAGS)
-	
-%.o: %.c %.h
+########## Development compiling ###############
+# test: creates executables based on test code #
+################################################
+
+test: cli-exe-1 cli-exe-par-1 cli-exe-sync
+
+########## Wildcard compiling #############################
+# %.o: compiles all binary (.o) files needed for programs #
+# % compiles random testing programs                      #
+###########################################################
+
+$(ODIR)/%.o: %.c $(IDIR)/%.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+%: %.c $(ODIR)/psiskv_lib.o $(DEPS)
+	$(CC) -o $@ $< $(CFLAGS)
+
+########## Auxiliary commands: ##########
+# edit: opens files to change project   #
+# clean: cleans dependencies from make  #
+#########################################
+
+edit:
+	$(EDITOR) $(IDIR)/* psiskv*.c Makefile &
+
 clean:
-	@rm -f server client test-client prof* *.o
+	@rm -f data_server client cli-exe-* $(ODIR)/*.o
 	@echo "Cleaned."
 
-.PHONY: clean
+# Rule declaring that <clean> and <edit> are not build targets (programs)
+
+.PHONY: clean edit
