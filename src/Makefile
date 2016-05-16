@@ -3,22 +3,10 @@ CFLAGS = -Wall -g
 LIBS = -pthread
 EDITOR = geany
 
-IDIR = ../include
-ODIR = obj
+CLIENT_OBJ = psiskv_lib.o
+SERVER_OBJ = psiskv_server.o psiskv_database.o
 
-##########################################
-# $(patsubst pattern,replacement,$(var)) #
-# $(var:pattern=rplacement)              #
-##########################################
-
-#### MAKING #####
-_DEPS = message.h
-DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
-
-_OBJ = psiskv_database.o psiskv_server_lib.o psiskv_lib.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-
-#### LOOK AT THIS #####
+######### Make all targets ##########
 
 all: clean client data_server
 
@@ -28,10 +16,10 @@ all: clean client data_server
 # data_server: data server program (child of server) #
 ######################################################
 
-client: psiskv_client.c $(OBJ) $(DEPS)
+client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-data_server: psiskv_data_server.c $(OBJ) $(DEPS)
+data_server: psiskv_data_server.c  $(SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 ########## Development compiling ###############
@@ -45,10 +33,10 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 # % compiles random testing programs                      #
 ###########################################################
 
-$(ODIR)/%.o: %.c $(IDIR)/%.h
+%.o: %.c %.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-%: %.c $(ODIR)/psiskv_lib.o $(DEPS)
+%: %.c psiskv_lib.o $(DEPS)
 	$(CC) -o $@ $< $(CFLAGS)
 
 ########## Auxiliary commands: ##########
@@ -57,12 +45,12 @@ $(ODIR)/%.o: %.c $(IDIR)/%.h
 #########################################
 
 edit:
-	$(EDITOR) $(IDIR)/* psiskv*.c Makefile &
+	$(EDITOR) *.h psiskv*.c Makefile &
 
 clean:
-	@rm -f data_server client cli-exe-* $(ODIR)/*.o
+	@rm -f data_server client *.o
 	@echo "Cleaned."
 
 # Rule declaring that <clean> and <edit> are not build targets (programs)
 
-.PHONY: clean edit
+.PHONY: all clean edit
