@@ -8,7 +8,7 @@ extern kv_data * database;
 void print_database(){
 	int i;
 	kv_data aux;
-	
+
 	for(i = 0; i < DATA_PRIME; i++){
 		printf("# - %d\n", i);
 		for(aux = database[i]; aux != NULL; aux = aux->next){
@@ -17,18 +17,18 @@ void print_database(){
 	}
 }
 
-/* This function writes the successful operations on the backup file 
- * 
- * This function return 0 on success 
+/* This function writes the successful operations on the backup file
+ *
+ * This function return 0 on success
  * This function returns -1 on erro (malloc?) */
 int write_backup(int operation, uint32_t key, int value_size, char * value){
 	void * buffer;
 	int msg_buffer[3];
-	
+
 	msg_buffer[0] = operation;
 	msg_buffer[1] = (int) key;
 	msg_buffer[2] = value_size;
-	
+
 	switch(operation){
 		case(BACKUP_WRITE):
 			buffer = (void *) malloc((3 * sizeof(int)) + (value_size * sizeof(char)));
@@ -38,36 +38,36 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 				close(backup_file);
 				exit(-1);
 			}
-			
+
 			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
 			memcpy(&(buffer[sizeof(msg_buffer)]), (void *) value, sizeof(value));
-			
+
 			/* WRITE HERE */
-			
+
 			break;
 		case(BACKUP_DELETE):
 			break;
 	}
-	
-	
+
+
 	return 0;
 }
 
-/* This function restores database based on backup file 
- * 
+/* This function restores database based on backup file
+ *
  * This function returns 0 on success
  * This function returns -1 on failure */
 int restore_backup(){
-	int n, overwrite;
+	int n;
 	int msg_buffer[3];
 	int value_size;
 	char * value_buffer;
-	
+
 	while((n = read(backup_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
 		switch(msg_buffer[0]){
 			case(BACKUP_WRITE):
 				value_size = msg_buffer[2] * sizeof(char);
-				
+
 				/* Allocate memory for variable */
 				value_buffer = (char *) malloc(value_size);
 				if(value_buffer == NULL){
@@ -97,16 +97,16 @@ int restore_backup(){
 				break;
 		}
 	}
-	
-	return n; 
+
+	return n;
 }
 
 /* This function is used for cleanup */
 void kv_delete_mutex(int index){
 	int i;
-	
+
 	if(index == -1) index = DATA_PRIME;
-	for(i = 0; i < index; i++)	
+	for(i = 0; i < index; i++)
 		pthread_mutex_destroy(&mutex[i]);
 }
 
@@ -115,7 +115,7 @@ void kv_delete_mutex(int index){
 void kv_delete_database(int index){
 	kv_data aux;
     int i;
-    
+
     if(index == -1) index = DATA_PRIME;
     for(i = 0; i < index; i++){
 		pthread_mutex_lock(&mutex[i]);
@@ -137,26 +137,26 @@ int mutex_init(){
 	for(i = 0; i < DATA_PRIME; i++)
 		if(pthread_mutex_init(&mutex[i], NULL) != 0)
 			return i;
-		
+
 	return 0;
 }
 
 /* This function allocates memoru for database structure */
 int database_init(){
 	int index;
-	
+
 	/* Setting backup file */
 	if((backup_file = open(BACKUP_NAME, O_RDWR | O_CREAT | O_EXCL, BACKUP_MODE)) == -1){
 		switch(errno){
 			case(EEXIST):
-				if((backup_file = open(BACKUP_NAME, O_RDWR)) != -1) 
+				if((backup_file = open(BACKUP_NAME, O_RDWR)) != -1)
 					break;
 			default:
 				return -1;
 				break;
 		}
 	}
-	
+
 	if((index = mutex_init()) != 0){
 		kv_delete_mutex(index);
 		return -1;
@@ -169,19 +169,19 @@ int database_init(){
 					kv_delete_database(index);
 					return -1;
 				}
-				
+
 				(database[index])->key = 0;
 				(database[index])->value = NULL;
 				(database[index])->next = NULL;
 			}
-			
+
 			if(restore_backup() == -1){
 				perror("Error on backup read");
 				kv_delete_database(-1);
 				close(backup_file);
 				exit(-1);
 			}
-			
+
 			return 0;
 		}else{
 			kv_delete_mutex(-1);
@@ -193,7 +193,7 @@ int database_init(){
 /* This function travels the list and returns the address */
 kv_data travel(int index, uint32_t key, int * status){
 	kv_data aux;
-	
+
 	aux = database[index];
 	*status = DATABASE_NOT_EQUAL;
 	/* --- CRITICAL REGION --- */
@@ -219,11 +219,11 @@ kv_data travel(int index, uint32_t key, int * status){
  * Otherwise this function returns -1 in case of error (always malloc error) */
 int kv_add_node(uint32_t key, char * value, int overwrite){
     int index = key % DATA_PRIME;
-    
+
     int status;
     char * old_value;
     kv_data aux, new_node;
-    
+
     /* Allocating memory */
 	new_node = (kv_data) malloc(sizeof(struct key_value_node));
 	if(new_node == NULL)
@@ -232,7 +232,7 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
 	/* Setting appropriate values */
 	new_node->key = key;
 	new_node->value = value;
-    
+
     /* Travel Loop */
     aux = travel(index, key, &status);
     switch(status){
@@ -244,7 +244,7 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
 				aux->next->value = value;
 				pthread_mutex_unlock(&mutex[index]);
 				/* --- END CRITICAL REGION --- */
-				free(old_value);		
+				free(old_value);
 			}else{
 				pthread_mutex_unlock(&mutex[index]);
 				free(value);
@@ -263,7 +263,7 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
 			pthread_mutex_unlock(&mutex[index]);
 			break;
 	}
-	
+
 	value = NULL;
     return 0;
 }
@@ -275,10 +275,10 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
  * This function returns NULL in case of error (key doesn't exist) */
 int kv_read_node(uint32_t key, char ** value){
 	int index = key % DATA_PRIME;
-    
+
     int status;
     kv_data aux;
-    
+
     /* Travel Loop */
     aux = travel(index, key, &status);
     switch(status){
@@ -288,7 +288,7 @@ int kv_read_node(uint32_t key, char ** value){
 			*value = (char *) malloc(sizeof(aux->value) + 1);
 			if(*value == NULL){
 				pthread_mutex_unlock(&mutex[index]);
-				return -1; 
+				return -1;
 			}
             memcpy(*value, aux->next->value, sizeof(aux->next->value) + 1);
             pthread_mutex_unlock(&mutex[index]);
@@ -312,10 +312,10 @@ int kv_read_node(uint32_t key, char ** value){
  * This function returns -1 in case of error (key not in database) */
 int kv_delete_node(uint32_t key){
 	int index = key % DATA_PRIME;
-    
+
     int status;
     kv_data aux, del;
-    
+
     /* Travel Loop */
     aux = travel(index, key, &status);
     switch(status){
