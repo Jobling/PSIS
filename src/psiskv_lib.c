@@ -41,12 +41,12 @@ void kv_close(int kv_descriptor){
 /* This function contacts the key-value store and stores
  * the pair (key, value). The value is an array of bytes
  * with length of value_length.
- * 
+ *
  *
  * This function returns 0 in case of success.
  * This function returns -1 in case of error.
- *  
- * If kv_overwrite is 0 and the key already exist 
+ *
+ * If kv_overwrite is 0 and the key already exist
  * in the server the function will fail and return -2.*/
 int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, int kv_overwrite){
 	message msg;
@@ -58,19 +58,19 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
 	msg.data_length = value_length;
 
 	/* Send message header */
-	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = kv_send(kv_descriptor, &msg, sizeof(message))) == -1){
 		printf("Warning: Failed to send message header.\n");
 		return -1;
 	}
 
 	/* Send message content */
-	if((nbytes = send(kv_descriptor, value, msg.data_length, 0)) == -1){
+	if((nbytes = kv_send(kv_descriptor, value, msg.data_length)) == -1){
 		printf("Warning: Failed to send message content.\n");
 		return -1;
 	}
 
 	/* The client must receive server confirmation */
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	nbytes = kv_recv(kv_descriptor, &msg, sizeof(message));
 	switch(nbytes){
 		case(-1):
 			printf("Warning: Failed to receive KV_WRITE confirmation.\n");
@@ -88,7 +88,7 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
 					return -1;
 				}else{
 					printf("Warning: Key already exists.\n");
-					return -2;					
+					return -2;
 				}
 			}
 	}
@@ -111,13 +111,13 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	msg.data_length = 0;
 
 	/* Send message header */
-	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = kv_send(kv_descriptor, &msg, sizeof(message))) == -1){
 		printf("Warning: Failed to send message header.\n");
 		return -1;
 	}
 
 	/* Receive the actual content */
-	nbytes = recv(kv_descriptor, value, value_length, 0);
+	nbytes = kv_recv(kv_descriptor, value, value_length);
 	switch(nbytes){
 		case(-1):
 			printf("Warning: Failed to receive KV_READ confirmation.\n");
@@ -140,7 +140,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
  * any kv_read to the suplied key will return error.
  *
  * This function returns 0 in case of success.
- * This function returns -1 in case of error. 
+ * This function returns -1 in case of error.
  * This function returns 1 in case the key is not on database */
 int kv_delete(int kv_descriptor, uint32_t key){
 	message msg;
@@ -152,13 +152,13 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	msg.data_length = 0;
 
 	/* Send message header */
-	if((nbytes = send(kv_descriptor, &msg, sizeof(message), 0)) == -1){
+	if((nbytes = kv_send(kv_descriptor, &msg, sizeof(message))) == -1){
 		perror("Writing message header");
 		return -1;
 	}
 
 	/* The client must receive server confirmation */
-	nbytes = recv(kv_descriptor, &msg, sizeof(message), 0);
+	nbytes = kv_recv(kv_descriptor, &msg, sizeof(message));
 	switch(nbytes){
 		case(-1):
 			printf("Warning: Failed to receive KV_DELETE confirmation.\n");
