@@ -100,21 +100,22 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 						exit(-1);
 					case(0):
 						msg.operation = KV_SUCCESS;
-						if((nbytes = kv_send(*sock_in, &msg, sizeof(message))) == -1){
+						if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 							error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
-						}
+
+						if(write_backup(BACKUP_WRITE, key, value_length, value) == -1)
+							error_and_close(sock_in, "Failed to write on backup file.\n");
+
 						break;
 					case(-2):
 						msg.operation = KV_FAILURE;
-						if((nbytes = kv_send(*sock_in, &msg, sizeof(message))) == -1){
+						if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 							error_and_close(sock_in, "Failed to send KV_WRITE FAILURE.\n");
-						}
 						break;
 				}
 				break;
 		}
 	}
-
 	return;
 }
 
@@ -143,18 +144,20 @@ void server_read(int * sock_in, uint32_t key){
 /* Handle KV_DELETE operations */
 void server_delete(int * sock_in, uint32_t key){
 	message msg;
-	int nbytes;
 
 	/* Delete node from database */
 	if(kv_delete_node(key) == -1){
         printf("Warning: Key not in database.\n");
         msg.operation = KV_FAILURE;
-		if((nbytes = kv_send(*sock_in, &msg, sizeof(message))) == -1)
+		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
 	}else{
 		msg.operation = KV_SUCCESS;
-		if((nbytes = kv_send(*sock_in, &msg, sizeof(message))) == -1)
+		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
+
+		if(write_backup(BACKUP_DELETE, key, 0, NULL) == -1)
+			error_and_close(sock_in, "Failed to write on backup file.\n");
 	}
 	return;
 }

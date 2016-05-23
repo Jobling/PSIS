@@ -20,7 +20,7 @@ void print_database(){
 /* This function writes the successful operations on the backup file
  *
  * This function return 0 on success
- * This function returns -1 on erro (malloc?) */
+ * This function returns -1 on error */
 int write_backup(int operation, uint32_t key, int value_size, char * value){
 	void * buffer;
 	int n, buffer_size;
