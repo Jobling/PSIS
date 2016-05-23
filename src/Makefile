@@ -4,7 +4,7 @@ LIBS = -pthread
 EDITOR = geany
 
 CLIENT_OBJ = psiskv_lib.o comm_utils.o
-SERVER_OBJ = psiskv_server.o psiskv_database.o comm_utils.o
+SERVER_OBJ = psiskv_server_lib.o psiskv_database.o comm_utils.o
 
 ######### Make all targets ##########
 

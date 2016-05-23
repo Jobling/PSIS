@@ -34,28 +34,28 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 		case(BACKUP_WRITE):
 			buffer_size = 3 * sizeof(int) + (value_size * sizeof(char));
 			buffer = (void *) malloc(buffer_size);
-			if(value_buffer == NULL){
+			if(buffer == NULL){
 				perror("Allocating backup write buffer");
 				kv_delete_database(-1);
 				close(backup_file);
 				exit(-1);
 			}
 
-			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
-			memcpy(&(buffer[sizeof(msg_buffer)]), (void *) value, sizeof(value));
+			memcpy(buffer, (void *) msg_buffer, sizeof(msg_buffer));
+			memcpy(buffer + sizeof(msg_buffer), (void *) value, sizeof(value));
 
 			break;
 		case(BACKUP_DELETE):
 			buffer_size = 3 * sizeof(int);
 			buffer = (void *) malloc(buffer_size);
-			if(value_buffer == NULL){
+			if(buffer == NULL){
 				perror("Allocating backup write buffer");
 				kv_delete_database(-1);
 				close(backup_file);
 				exit(-1);
 			}
 
-			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
+			memcpy(buffer, (void *) msg_buffer, sizeof(msg_buffer));
 			break;
 		default:
 			/* Just in case */
@@ -164,7 +164,7 @@ int database_init(){
 	int index;
 
 	/* Setting backup file */
-	if((backup_file = open(BACKUP_NAME, O_RDWR | O_CREAT | O_EXCL, BACKUP_MODE)) == -1){
+	if((backup_file = open(BACKUP_NAME, O_RDWR | O_CREAT | O_EXCL, 0666)) == -1){
 		switch(errno){
 			case(EEXIST):
 				if((backup_file = open(BACKUP_NAME, O_RDWR)) != -1)

@@ -12,7 +12,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
 #define DATA_PRIME 211
 
 #define DATABASE_EQUAL 0
@@ -22,7 +21,6 @@
 #define BACKUP_DELETE 2
 
 #define BACKUP_NAME "backup"
-#define BACKUP_MODE  S_IROTH | S_IWOTH
 
 typedef struct key_value_node{
 	uint32_t key;
