@@ -8,7 +8,6 @@
 
 /* Global variables */
 int listener;
-kv_data * database;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */

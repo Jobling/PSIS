@@ -2,7 +2,7 @@
 
 int backup_file;
 pthread_mutex_t mutex[DATA_PRIME];
-extern kv_data * database;
+kv_data * database;
 
 /* This function prints the database contents on the terminal */
 void print_database(){
@@ -23,6 +23,7 @@ void print_database(){
  * This function returns -1 on erro (malloc?) */
 int write_backup(int operation, uint32_t key, int value_size, char * value){
 	void * buffer;
+	int n, buffer_size;
 	int msg_buffer[3];
 
 	msg_buffer[0] = operation;
@@ -31,7 +32,8 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 
 	switch(operation){
 		case(BACKUP_WRITE):
-			buffer = (void *) malloc((3 * sizeof(int)) + (value_size * sizeof(char)));
+			buffer_size = 3 * sizeof(int) + (value_size * sizeof(char));
+			buffer = (void *) malloc(buffer_size);
 			if(value_buffer == NULL){
 				perror("Allocating backup write buffer");
 				kv_delete_database(-1);
@@ -42,15 +44,31 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
 			memcpy(&(buffer[sizeof(msg_buffer)]), (void *) value, sizeof(value));
 
-			/* WRITE HERE */
-
 			break;
 		case(BACKUP_DELETE):
+			buffer_size = 3 * sizeof(int);
+			buffer = (void *) malloc(buffer_size);
+			if(value_buffer == NULL){
+				perror("Allocating backup write buffer");
+				kv_delete_database(-1);
+				close(backup_file);
+				exit(-1);
+			}
+
+			memcpy(&(buffer[0]), (void *) msg_buffer, sizeof(msg_buffer));
+			break;
+		default:
+			/* Just in case */
 			break;
 	}
 
+	n = write(backup_file, buffer, buffer_size);
+	free(buffer);
 
-	return 0;
+	if(n <= 0)
+		return -1;
+	else
+		return 0;
 }
 
 /* This function restores database based on backup file

@@ -1,7 +1,6 @@
 #include "psiskv_server_lib.h"
 
 extern int listener;
-extern kv_data * database;
 
 /* Handle errors and closes local socket */
 void error_and_close(int * sock_in, char * warning){
