@@ -23,8 +23,11 @@ data_server: psiskv_data_server.c  $(SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 ########## Development compiling ###############
+# objects: compile all object files            #
 # test: creates executables based on test code #
 ################################################
+
+objects: $(CLIENT_OBJ) $(SERVER_OBJ)
 
 test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 
@@ -45,7 +48,8 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 #########################################
 
 edit:
-	$(EDITOR) *.h psiskv*.c Makefile &
+	@echo "Opening $(EDITOR)"
+	@$(EDITOR) *.h psiskv*.c comm*.c Makefile &
 
 clean:
 	@rm -f data_server client *.o
@@ -53,4 +57,4 @@ clean:
 
 # Rule declaring that <clean> and <edit> are not build targets (programs)
 
-.PHONY: all clean edit
+.PHONY: all objects clean edit

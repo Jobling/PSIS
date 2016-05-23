@@ -122,21 +122,19 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 /* Handle KV_READ operations */
 void server_read(int * sock_in, uint32_t key){
 	char * value;
-	int nbytes;
 
 	value = NULL;
 
 	/* Read data from database */
 	if(kv_read_node(key, &value) == 0){
 		/* Send data to client (in case of success) */
-		if((nbytes = kv_send(*sock_in, value, strlen(value) + 1)) == -1)
+		if(kv_send(*sock_in, value, strlen(value) + 1) == -1);
 			error_and_close(sock_in, "Failed to send message content.\n");
 		free(value);
 	}else{
         printf("Warning: Failed to read key from database.\n");
-		if((nbytes = kv_send(*sock_in, KV_NOT_FOUND, sizeof(KV_NOT_FOUND))) == -1)
+		if(kv_send(*sock_in, KV_NOT_FOUND, sizeof(KV_NOT_FOUND)) == -1)
 			error_and_close(sock_in, "Failed to send KV_READ failure.\n");
-
     }
 	return;
 }
