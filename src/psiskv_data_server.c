@@ -95,7 +95,6 @@ int main(){
 	// pthread_t keyboard_thread;
 
 	signal(SIGINT, sig_handler);
-	
 	listener = server_init(BACKLOG);
 	if(database_init()){
 		perror("Database");
