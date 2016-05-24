@@ -10,10 +10,12 @@ void print_database(){
 	kv_data aux;
 
 	for(i = 0; i < DATA_PRIME; i++){
-		printf("# - %d\n", i);
-		for(aux = database[i]; aux != NULL; aux = aux->next){
-			printf("\t%u - %s\n", aux->key, aux->value);
-		}
+        if(database[i]->next != NULL){
+            printf("# - %d\n", i);
+            for(aux = database[i]->next; aux != NULL; aux = aux->next){
+                printf("\t%u - %s\n", aux->key, aux->value);
+            }
+        }
 	}
 }
 
@@ -25,7 +27,7 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 	void * buffer;
 	int n, buffer_size;
 	int msg_buffer[3];
-
+    
 	msg_buffer[0] = operation;
 	msg_buffer[1] = (int) key;
 	msg_buffer[2] = value_size;
@@ -42,7 +44,7 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 			}
 
 			memcpy(buffer, (void *) msg_buffer, sizeof(msg_buffer));
-			memcpy(buffer + sizeof(msg_buffer), (void *) value, sizeof(value));
+			memcpy(buffer + sizeof(msg_buffer), (void *) value, value_size * sizeof(char));
 
 			break;
 		case(BACKUP_DELETE):
@@ -304,12 +306,12 @@ int kv_read_node(uint32_t key, char ** value){
 		case DATABASE_EQUAL:
 			/* --- CRITICAL REGION --- */
 			/* Allocating memory */
-			*value = (char *) malloc(sizeof(aux->next->value) + 1);
+			*value = (char *) malloc((strlen(aux->next->value) + 1) * sizeof(char));
 			if(*value == NULL){
 				pthread_mutex_unlock(&mutex[index]);
 				return -1;
 			}
-            memcpy(*value, aux->next->value, sizeof(aux->next->value) + 1);
+            memcpy(*value, aux->next->value, (strlen(aux->next->value) + 1) * sizeof(char));
             pthread_mutex_unlock(&mutex[index]);
             /* --- END CRITICAL REGION --- */
             return 0;

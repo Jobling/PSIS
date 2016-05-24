@@ -43,9 +43,10 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 	$(CC) -o $@ $< $(CFLAGS)
 
 ########## Auxiliary commands: ##########
+# git_push: commits and pushes files    #
 # edit: opens files to change project   #
 # clean: cleans dependencies from make  #
-#########################################
+#########################################	
 
 edit:
 	@echo "Opening $(EDITOR)"
@@ -55,6 +56,10 @@ clean:
 	@rm -f data_server client *.o
 	@echo "Cleaned."
 
+git_push: clean
+	@git commit -a
+	@git push
+
 # Rule declaring that <clean> and <edit> are not build targets (programs)
 
-.PHONY: all objects clean edit
+.PHONY: all objects clean edit git_push

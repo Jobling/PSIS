@@ -91,7 +91,7 @@ int main(int argc, char ** argv){
                     printf("Incorrect number of arguments.\n");
                 else{
                     /* Writing on server */
-                    switch(kv_write(kv_socket, key, value, sizeof(value) + 1, 0)){
+                    switch(kv_write(kv_socket, key, value, strlen(value) + 1, 0)){
 						case(0):
 							printf("KV_WRITE successful.\n");
 						case(-2):
@@ -107,7 +107,7 @@ int main(int argc, char ** argv){
                     printf("Incorrect number of arguments.\n");
                 else{
                     /* Writing on server */
-                    switch(kv_write(kv_socket, key, value, sizeof(value) + 1, 1)){
+                    switch(kv_write(kv_socket, key, value, strlen(value) + 1, 1)){
 						case(0):
 							printf("KV_OVERWRITE successful.\n");
 						case(-2):
@@ -128,12 +128,10 @@ int main(int argc, char ** argv){
                             kv_close(kv_socket);
                             exit(-1);
                         case(-2):
-                            break;
-                        case(0):
-                            printf("KV_READ successful: %s\n", value);
+                            printf("Key doesn't exist on server.\n");
                             break;
                         default:
-                            printf("Unknown error.\n");
+                            printf("KV_READ successful: %s\n", value);
                             break;
                     }
                 break;

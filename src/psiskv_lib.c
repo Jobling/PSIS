@@ -103,7 +103,8 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
  * This function returns -2 in case of key not on database */
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	message msg;
-	int nbytes;
+    char * buffer;
+	int nbytes, buffer_size;
 
 	/* Creating message header */
 	msg.operation = KV_READ;
@@ -116,9 +117,30 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 		return -1;
 	}
 
+    /* Receive buffer_size */
+    switch(kv_recv(kv_descriptor, &msg, sizeof(message))){
+        case(-1):
+            printf("Warning: Failed to receive KV_READ data length.\n");
+			return -1;
+        case(0):
+            printf("Warning: Server closed socket.\n");
+			return -1;
+        default:
+            switch(msg.operation){
+                case(KV_SUCCESS):
+                    buffer = (char *) malloc(msg.data_length);
+                    break;
+                case(KV_FAILURE):
+                    printf("Key not in database.\n");
+                    return -2;
+                default:
+                    /* Just in case */
+                    break;
+            }
+    }
     
 	/* Receive the actual content */
-	nbytes = kv_recv(kv_descriptor, value, value_length);
+	nbytes = kv_recv(kv_descriptor, buffer, msg.data_length);
 	switch(nbytes){
 		case(-1):
 			printf("Warning: Failed to receive KV_READ confirmation.\n");
@@ -127,11 +149,10 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 			printf("Warning: Server closed socket.\n");
 			return -1;
 		default:
-			if(strcmp(value, KV_NOT_FOUND) == 0){
-				printf("Key not in database.\n");
-				return -2;
-			}else
-				return 0;
+            buffer_size = (msg.data_length <= value_length) ? msg.data_length:value_length;
+            memcpy(value, buffer, buffer_size);
+			free(buffer);
+            return nbytes;
 	}
 
 }

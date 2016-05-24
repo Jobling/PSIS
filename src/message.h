@@ -10,7 +10,6 @@
 
 #define KV_SUCCESS 200
 #define KV_FAILURE 400
-#define KV_NOT_FOUND "__KV_NOT_FOUND__\0"
 
 typedef struct message_protocol{
 	int operation;
