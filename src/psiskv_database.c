@@ -289,8 +289,9 @@ int kv_add_node(uint32_t key, char * value, int overwrite){
 /* This function read a value from the linkedlist.
  * The retrieved value is stored in the array pointed by value.
  *
- * This function returns the value in case of success.
- * This function returns NULL in case of error (key doesn't exist) */
+ * This function returns 0 in case of success.
+ * This function returns -1 in case of error (malloc error) 
+ * This function returns -2 in case key doesn't exist */
 int kv_read_node(uint32_t key, char ** value){
 	int index = key % DATA_PRIME;
 
@@ -303,7 +304,7 @@ int kv_read_node(uint32_t key, char ** value){
 		case DATABASE_EQUAL:
 			/* --- CRITICAL REGION --- */
 			/* Allocating memory */
-			*value = (char *) malloc(sizeof(aux->value) + 1);
+			*value = (char *) malloc(sizeof(aux->next->value) + 1);
 			if(*value == NULL){
 				pthread_mutex_unlock(&mutex[index]);
 				return -1;
@@ -313,14 +314,11 @@ int kv_read_node(uint32_t key, char ** value){
             /* --- END CRITICAL REGION --- */
             return 0;
 		case DATABASE_NOT_EQUAL:
-			pthread_mutex_unlock(&mutex[index]);
-			free(*value);
-			return -1;
-		default:
+        default:
 			pthread_mutex_unlock(&mutex[index]);
 			break;
 	}
-	return -1;
+	return -2;
 }
 
 /* This function deletes a key-value pair from the linkedlist

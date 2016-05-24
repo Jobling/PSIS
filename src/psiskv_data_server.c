@@ -4,7 +4,7 @@
 #define BACKLOG 5
 #define BUFFSIZE 256
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Global variables */
 int listener;

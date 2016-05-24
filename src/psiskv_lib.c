@@ -98,7 +98,7 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
  * the value corresponding to key. The retrieved value has maximum
  * length of value_length and is stored in the array pointed by value.
  *
- * This function returns 0 in case of success.
+ * This function returns the number of bytes read in case of success.
  * This function returns -1 in case of error.
  * This function returns -2 in case of key not on database */
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
@@ -116,6 +116,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 		return -1;
 	}
 
+    
 	/* Receive the actual content */
 	nbytes = kv_recv(kv_descriptor, value, value_length);
 	switch(nbytes){
