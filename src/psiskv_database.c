@@ -170,6 +170,8 @@ void kv_delete_database(int index){
         }
     }
     kv_delete_mutex(-1);
+    close(backup_file);
+    
 	return;
 }
 
