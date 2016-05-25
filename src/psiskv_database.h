@@ -34,8 +34,9 @@ typedef struct key_value_node{
 
 
 /* --- Auxiliary Functions --- */
-int open_file(int * fd, char * filename);
 void print_database();
+void close_descriptors();
+int open_file(int * fd, char * filename);
 
 /* --- Backup/log core functions --- */
 int write_backup();

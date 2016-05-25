@@ -5,7 +5,7 @@ int backup_file;
 kv_data database[DATA_PRIME];
 pthread_mutex_t mutex[DATA_PRIME];
 
-/* 
+/*
    #####################################################################
    ###################### Auxiliary Functions ##########################
    #####################################################################
@@ -26,7 +26,36 @@ void print_database(){
 	}
 }
 
-/* 
+/* This function closes the file descriptors, if they are opened */
+void close_descriptors(){
+	if(log_file != -1){
+		close(log_file);
+		log_file = -1;
+	}
+	if(backup_file != -1){
+		close(backup_file);
+		backup_file = -1;
+	}
+
+	return;
+}
+
+/* This function opens the file (after checking for existence)
+ *
+ * This function return 0 on success
+ * This function returns -1 on error */
+int open_file(int * fd, char * filename){
+	if((*fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0666)) == -1){
+		if(errno == EEXIST){
+			if((*fd = open(filename, O_RDWR)) == -1) return -1;
+		}else{
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/*
    #####################################################################
    ################## Backup/log core functions ########################
    #####################################################################
@@ -37,56 +66,59 @@ void print_database(){
  * This function return 0 on success
  * This function returns -1 on error */
 int write_backup(){
-	int n;
+	int n, i;
 	int msg_buffer[3];
 	void * buffer;
 	int buffer_size;
 	kv_data aux;
-    int i=0;
-	
+
 	if(open_file(&backup_file, BACKUP_TEMP) == -1){
 		printf("Couldn't open backup file.\n");
 		return -1;
-	} 
-	
-	while(database[i] != NULL){
-		aux = database[i];
-		database[i] = (database[i])->next;
-		if(aux->value != NULL){
-				
-			msg_buffer[0] = 0;
-			msg_buffer[1] = (int) aux->key;
-			msg_buffer[2] = aux->value_size;
+	}
 
-			buffer_size = 3 * sizeof(int) + aux->value_size;
-			buffer = (void *) malloc(buffer_size);
-			if(buffer == NULL){
-				close(backup_file);
-				return -1;
-			
-			}else{	
+	for(i = 0; i < DATA_PRIME; i++){
+		pthread_mutex_lock(&mutex[i]);
+
+		while(database[i] != NULL){
+			aux = database[i];
+			database[i] = (database[i])->next;
+			if(aux->value != NULL){
+				msg_buffer[0] = 0;
+				msg_buffer[1] = (int) aux->key;
+				msg_buffer[2] = aux->value_size;
+
+				buffer_size = 3 * sizeof(int) + aux->value_size;
+				buffer = (void *) malloc(buffer_size);
+				if(buffer == NULL){
+					close_descriptors();
+					return -1;
+				}
+
 				memcpy(buffer, (void *) msg_buffer, sizeof(msg_buffer));
 				memcpy(buffer + sizeof(msg_buffer), (void *) aux->value, aux->value_size);
 				n = write(backup_file, buffer, buffer_size);
 				free(buffer);
-				
+
 				if(n <= 0){
+					perror("Writing on backup file");
 					return -1;
 				}
 			}
 		}
+		pthread_mutex_unlock(&mutex[i]);
 	}
+
 	if(rename(BACKUP_TEMP, BACKUP_NAME) == -1){
 		perror("Renaming temporary file");
-		close(log_file);
-		close(backup_file);
+		close_descriptors();
 		return -1;
 	}
-	close(backup_file);	
-	close(log_file);
+
+	close_descriptors();
 	unlink(LOG_NAME);
 	
-	return	0;
+	return 0;
 }
 
 /* This function writes the successful operations on the backup file
@@ -139,21 +171,6 @@ int write_log(int operation, uint32_t key, int value_size, char * value){
 	}else return 0;
 }
 
-/* This function opens the file (after checking for existence)
- *
- * This function return 0 on success
- * This function returns -1 on error */
-int open_file(int * fd, char * filename){
-	if((*fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0666)) == -1){
-		if(errno == EEXIST){
-			if((*fd = open(filename, O_RDWR)) == -1) return -1;
-		}else{
-			return -1;
-		}
-	}
-	return 0;	
-}
-
 /* This function restores database based on backup file
  *
  * This function returns 0 on success
@@ -167,7 +184,7 @@ int restore_database(){
 	/* Check if log exists */
 	if(access(LOG_NAME, F_OK) == 0){
 		if((log_file = open(LOG_NAME, O_RDWR)) == -1) return -1;
-		
+
 		while((n = read(log_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
 			switch(msg_buffer[0]){
 				case(LOG_WRITE):
@@ -193,7 +210,7 @@ int restore_database(){
 						free(value_buffer);
 						return -1;
 					}
-					
+
 					break;
 				case(LOG_DELETE):
 					kv_delete_node(msg_buffer[1]);
@@ -202,16 +219,16 @@ int restore_database(){
 					/* Just in case */
 					break;
 			}
-		}	
+		}
 	}else{
-		/* If log doesn't exist, check for backup */ 
+		/* If log doesn't exist, check for backup */
 		if(access(BACKUP_NAME, F_OK) == 0){
 			if((backup_file = open(BACKUP_NAME, O_RDWR)) == -1) return -1;
 			if(open_file(&log_file, LOG_TEMP) == -1){
 				close(backup_file);
 				return -1;
-			} 
-			
+			}
+
 			while((n = read(backup_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
 				value_size = msg_buffer[2];
 
@@ -248,7 +265,7 @@ int restore_database(){
 					return -1;
 				}
 			}
-			
+
 			if(rename(LOG_TEMP, LOG_NAME) == -1){
 				perror("Renaming temporary file");
 				close(log_file);
@@ -260,13 +277,13 @@ int restore_database(){
 		/* No files => new log */
 		}else{
 			if(open_file(&log_file, LOG_NAME) == -1) return -1;
-		}		
+		}
 	}
-	
+
 	return n;
 }
 
-/* 
+/*
    #####################################################################
    ###################### Mutex Core Functions #########################
    #####################################################################
@@ -293,7 +310,7 @@ int mutex_init(){
 	return 0;
 }
 
-/* 
+/*
    #####################################################################
    ################### Database Core Functions #########################
    #####################################################################
@@ -304,9 +321,9 @@ int mutex_init(){
 void kv_delete_database(int index){
 	kv_data aux;
     int i;
-    	
+
 	close(log_file);
-	
+
     if(index == -1) index = DATA_PRIME;
     for(i = 0; i < index; i++){
 		pthread_mutex_lock(&mutex[i]);
@@ -318,7 +335,7 @@ void kv_delete_database(int index){
         }
     }
     kv_delete_mutex(-1);
-    
+
 	return;
 }
 
@@ -342,7 +359,7 @@ int database_init(){
 			(database[index])->value = NULL;
 			(database[index])->next = NULL;
 		}
-		
+
 		if(restore_database() == -1){
 			perror("Error on restore_database");
 			kv_delete_database(-1);
