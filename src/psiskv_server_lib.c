@@ -1,5 +1,11 @@
 #include "psiskv_server_lib.h"
 
+/* 
+   #####################################################################
+   ###################### Auxiliary Functions ##########################
+   #####################################################################
+*/
+
 /* Handle errors and closes local socket */
 void error_and_close(int * sock_in, char * warning){
 	printf("Warning: %s", warning);
@@ -28,6 +34,12 @@ int get_message_header(int * sock_in, message * msg){
 			return 0;
 	}
 }
+
+/* 
+   #####################################################################
+   ################### Data server core functions ######################
+   #####################################################################
+*/
 
 /* Initialize listening socket listener */
 int server_init(int backlog){

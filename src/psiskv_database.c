@@ -4,6 +4,12 @@ int backup_file;
 kv_data database[DATA_PRIME];
 pthread_mutex_t mutex[DATA_PRIME];
 
+/* 
+   #####################################################################
+   ###################### Auxiliary Functions ##########################
+   #####################################################################
+*/
+
 /* This function prints the database contents on the terminal */
 void print_database(){
 	int i;
@@ -114,6 +120,12 @@ int restore_backup(){
 	return n;
 }
 
+/* 
+   #####################################################################
+   ###################### Mutex Core Functions #########################
+   #####################################################################
+*/
+
 /* This function is used for cleanup */
 void kv_delete_mutex(int index){
 	int i;
@@ -124,6 +136,22 @@ void kv_delete_mutex(int index){
 		pthread_mutex_destroy(&mutex[i]);
 	}
 }
+
+/* This function initializes mutex */
+int mutex_init(){
+	int i;
+	for(i = 0; i < DATA_PRIME; i++)
+		if(pthread_mutex_init(&mutex[i], NULL) != 0)
+			return i;
+
+	return 0;
+}
+
+/* 
+   #####################################################################
+   ################### Database Core Functions #########################
+   #####################################################################
+*/
 
 /* This function is used to cleanup
  * memory used by the linked list */
@@ -143,16 +171,6 @@ void kv_delete_database(int index){
     }
     kv_delete_mutex(-1);
 	return;
-}
-
-/* This function initializes mutex */
-int mutex_init(){
-	int i;
-	for(i = 0; i < DATA_PRIME; i++)
-		if(pthread_mutex_init(&mutex[i], NULL) != 0)
-			return i;
-
-	return 0;
 }
 
 /* This function allocates memoru for database structure */

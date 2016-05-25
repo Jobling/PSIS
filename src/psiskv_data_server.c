@@ -70,6 +70,8 @@ void * database_handler(void * arg){
 	}
 }
 
+
+
 /* Function meant to receive commands from keyboard */
 void keyboard_handler(void * arg){
 	char input[BUFFSIZE];
