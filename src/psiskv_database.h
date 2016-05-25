@@ -34,7 +34,11 @@ typedef struct key_value_node{
 
 
 /* --- Auxiliary Functions --- */
+int open_file(int * fd, char * filename);
 void print_database();
+
+/* --- Backup/log core functions --- */
+int write_backup();
 int write_log(int operation, uint32_t key, int value_size, char * value);
 int restore_database();
 

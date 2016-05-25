@@ -15,6 +15,7 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		close(listener);
+		write_backup();
 		kv_delete_database(-1);
 		exit(0);
 	}else{

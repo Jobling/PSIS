@@ -26,6 +26,69 @@ void print_database(){
 	}
 }
 
+/* 
+   #####################################################################
+   ################## Backup/log core functions ########################
+   #####################################################################
+*/
+
+/* This function writes the successful operations on the backup file
+ *
+ * This function return 0 on success
+ * This function returns -1 on error */
+int write_backup(){
+	int n;
+	int msg_buffer[3];
+	void * buffer;
+	int buffer_size;
+	kv_data aux;
+    int i=0;
+	
+	if(open_file(&backup_file, BACKUP_TEMP) == -1){
+		printf("Couldn't open backup file.\n");
+		return -1;
+	} 
+	
+	while(database[i] != NULL){
+		aux = database[i];
+		database[i] = (database[i])->next;
+		if(aux->value != NULL){
+				
+			msg_buffer[0] = 0;
+			msg_buffer[1] = (int) aux->key;
+			msg_buffer[2] = aux->value_size;
+
+			buffer_size = 3 * sizeof(int) + aux->value_size;
+			buffer = (void *) malloc(buffer_size);
+			if(buffer == NULL){
+				close(backup_file);
+				return -1;
+			
+			}else{	
+				memcpy(buffer, (void *) msg_buffer, sizeof(msg_buffer));
+				memcpy(buffer + sizeof(msg_buffer), (void *) aux->value, aux->value_size);
+				n = write(backup_file, buffer, buffer_size);
+				free(buffer);
+				
+				if(n <= 0){
+					return -1;
+				}
+			}
+		}
+	}
+	if(rename(BACKUP_TEMP, BACKUP_NAME) == -1){
+		perror("Renaming temporary file");
+		close(log_file);
+		close(backup_file);
+		return -1;
+	}
+	close(backup_file);	
+	close(log_file);
+	unlink(LOG_NAME);
+	
+	return	0;
+}
+
 /* This function writes the successful operations on the backup file
  *
  * This function return 0 on success
@@ -131,7 +194,6 @@ int restore_database(){
 						return -1;
 					}
 					
-					free(value_buffer);
 					break;
 				case(LOG_DELETE):
 					kv_delete_node(msg_buffer[1]);
@@ -185,8 +247,6 @@ int restore_database(){
 					unlink(LOG_TEMP);
 					return -1;
 				}
-				
-				free(value_buffer);
 			}
 			
 			if(rename(LOG_TEMP, LOG_NAME) == -1){
@@ -244,19 +304,20 @@ int mutex_init(){
 void kv_delete_database(int index){
 	kv_data aux;
     int i;
-
+    	
+	close(log_file);
+	
     if(index == -1) index = DATA_PRIME;
     for(i = 0; i < index; i++){
 		pthread_mutex_lock(&mutex[i]);
         while(database[i] != NULL){
             aux = database[i];
             database[i] = (database[i])->next;
-            if(aux->value != NULL) free(aux->value);
+            if(aux->value != NULL)	free(aux->value);
             free(aux);
         }
     }
     kv_delete_mutex(-1);
-    close(backup_file);
     
 	return;
 }
