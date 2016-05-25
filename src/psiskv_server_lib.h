@@ -20,8 +20,8 @@ int get_message_header(int * sock_in, message * msg);
 
 /* --- Server core functions --- */
 int server_init(int backlog);
-void server_write(int * sock_in, uint32_t key, int value_length, int overwrite);
-void server_read(int * sock_in, uint32_t key);
-void server_delete(int * sock_in, uint32_t key);
+int server_write(int * sock_in, uint32_t key, int value_length, int overwrite);
+int server_read(int * sock_in, uint32_t key);
+int server_delete(int * sock_in, uint32_t key);
 
 #endif

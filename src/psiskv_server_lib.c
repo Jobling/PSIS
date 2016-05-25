@@ -1,7 +1,5 @@
 #include "psiskv_server_lib.h"
 
-extern int listener;
-
 /* Handle errors and closes local socket */
 void error_and_close(int * sock_in, char * warning){
 	printf("Warning: %s", warning);
@@ -64,20 +62,20 @@ int server_init(int backlog){
 	return listener;
 }
 
-/* Handle KV_WRITE operations */
-void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
+/* Handle KV_WRITE operations 
+ * 
+ * This function returns 0 in case of success
+ * This function returns 1 in case of error */
+int server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 	int nbytes;
 	char * value;
 	message msg;
 
 	/* Allocate memory for variable */
-	value = (char *) malloc(value_length * sizeof(char));
+	value = (char *) malloc(value_length);
 	if(value == NULL){
 		perror("Allocating buffer");
-		close(*sock_in);
-		close(listener);
-		kv_delete_database(-1);
-		exit(-1);
+		return 1;
 	}else{
 		/* Receive value */
 		nbytes = kv_recv(*sock_in, value, value_length);
@@ -90,21 +88,20 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 				break;
 			default:
 				/* Store value on database, with given key */
-                value[value_length - 1] = '\0';
-                switch(kv_add_node(key, value, overwrite)){
+				value[value_length - 1] = '\0';
+                switch(kv_add_node(key, value_length, value, overwrite)){
 					case(-1):
 						perror("Allocating nodes on database");
-						close(*sock_in);
-						close(listener);
-						kv_delete_database(-1);
-						exit(-1);
+						return 1;
 					case(0):
 						msg.operation = KV_SUCCESS;
 						if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 							error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
 
-						if(write_backup(BACKUP_WRITE, key, value_length, value) == -1)
-							error_and_close(sock_in, "Failed to write on backup file.\n");
+						if(write_backup(BACKUP_WRITE, key, value_length, value) == -1){
+							perror("Writing on backup");
+							return 1;
+						}
 
 						break;
 					case(-2):
@@ -116,11 +113,14 @@ void server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 				break;
 		}
 	}
-	return;
+	return 0;
 }
 
-/* Handle KV_READ operations */
-void server_read(int * sock_in, uint32_t key){
+/* Handle KV_READ operations
+ * 
+ * This function returns 0 in case of success
+ * This function returns 1 in case of error */
+int server_read(int * sock_in, uint32_t key){
 	char * value;
     message msg;
 
@@ -130,10 +130,7 @@ void server_read(int * sock_in, uint32_t key){
     switch(kv_read_node(key, &value)){
         case(-1):
             perror("Allocating value from database");
-            close(*sock_in);
-            close(listener);
-            kv_delete_database(-1);
-            exit(-1);
+            return 1;
         case(-2):
             msg.operation = KV_FAILURE;
             if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
@@ -151,11 +148,14 @@ void server_read(int * sock_in, uint32_t key){
             free(value);
             break;
     }
-	return;
+	return 0;
 }
 
-/* Handle KV_DELETE operations */
-void server_delete(int * sock_in, uint32_t key){
+/* Handle KV_DELETE operations
+ * 
+ * This function returns 0 in case of success
+ * This function returns 1 in case of error */
+int server_delete(int * sock_in, uint32_t key){
 	message msg;
 
 	/* Delete node from database */
@@ -169,8 +169,10 @@ void server_delete(int * sock_in, uint32_t key){
 		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
 
-		if(write_backup(BACKUP_DELETE, key, 0, NULL) == -1)
-			error_and_close(sock_in, "Failed to write on backup file.\n");
+		if(write_backup(BACKUP_DELETE, key, 0, NULL) == -1){
+			perror("Writing on backup");
+			return 1;
+		}
 	}
-	return;
+	return 0;
 }

@@ -31,6 +31,7 @@ void * database_handler(void * arg){
 	struct sockaddr_in client_addr;
 
 	int sock_in = -1;
+	int error = 0;
 	addr_size = sizeof(client_addr);
 
 	while(1){
@@ -57,11 +58,14 @@ void * database_handler(void * arg){
 				break;
 			default:
 				printf("Unknown message operation\n");
-				perror("Message operation");
-				close(sock_in);
-				close(listener);
-				kv_delete_database(-1);
-				exit(-1);
+				break;
+		}
+		
+		if(error){
+			close(sock_in);
+			close(listener);
+			kv_delete_database(-1);
+			exit(-1);
 		}
 	}
 }
@@ -81,8 +85,6 @@ void keyboard_handler(void * arg){
 			printf("Printing!\n");
 			print_database();
 		}
-
-        printf("Commands not yet implemented.\n");
 	}
 
 	return;
