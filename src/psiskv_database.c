@@ -1,5 +1,6 @@
 #include "psiskv_database.h"
 
+int log_file;
 int backup_file;
 kv_data database[DATA_PRIME];
 pthread_mutex_t mutex[DATA_PRIME];
@@ -29,7 +30,7 @@ void print_database(){
  *
  * This function return 0 on success
  * This function returns -1 on error */
-int write_backup(int operation, uint32_t key, int value_size, char * value){
+int write_log(int operation, uint32_t key, int value_size, char * value){
 	void * buffer;
 	int n, buffer_size;
 	int msg_buffer[3];
@@ -39,11 +40,11 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 	msg_buffer[2] = value_size;
 
 	switch(operation){
-		case(BACKUP_WRITE):
+		case(LOG_WRITE):
 			buffer_size = 3 * sizeof(int) + value_size;
 			buffer = (void *) malloc(buffer_size);
 			if(buffer == NULL){
-				close(backup_file);
+				close(log_file);
 				return -1;
 			}
 
@@ -51,11 +52,11 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 			memcpy(buffer + sizeof(msg_buffer), (void *) value, value_size);
 
 			break;
-		case(BACKUP_DELETE):
+		case(LOG_DELETE):
 			buffer_size = 3 * sizeof(int);
 			buffer = (void *) malloc(buffer_size);
 			if(buffer == NULL){
-				close(backup_file);
+				close(log_file);
 				return -1;
 			}
 
@@ -66,57 +67,142 @@ int write_backup(int operation, uint32_t key, int value_size, char * value){
 			break;
 	}
 
-	n = write(backup_file, buffer, buffer_size);
+	n = write(log_file, buffer, buffer_size);
 	free(buffer);
 
-	return (n < 0) ? -1:0;
+	if(n < 0){
+		close(log_file);
+		return -1;
+	}else return 0;
+}
+
+/* This function opens the file (after checking for existence)
+ *
+ * This function return 0 on success
+ * This function returns -1 on error */
+int open_file(int * fd, char * filename){
+	if((*fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0666)) == -1){
+		if(errno == EEXIST){
+			if((*fd = open(filename, O_RDWR)) == -1) return -1;
+		}else{
+			return -1;
+		}
+	}
+	return 0;	
 }
 
 /* This function restores database based on backup file
  *
  * This function returns 0 on success
  * This function returns -1 on failure */
-int restore_backup(){
+int restore_database(){
 	int n;
 	int msg_buffer[3];
 	int value_size;
 	char * value_buffer;
 
-	while((n = read(backup_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
-		switch(msg_buffer[0]){
-			case(BACKUP_WRITE):
+	/* Check if log exists */
+	if(access(LOG_NAME, F_OK) == 0){
+		if((log_file = open(LOG_NAME, O_RDWR)) == -1) return -1;
+		
+		while((n = read(log_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
+			switch(msg_buffer[0]){
+				case(LOG_WRITE):
+					value_size = msg_buffer[2];
+
+					/* Allocate memory for variable */
+					value_buffer = (char *) malloc(value_size);
+					if(value_buffer == NULL){
+						perror("Allocating backup read buffer");
+						close(log_file);
+						free(value_buffer);
+						return -1;
+					}else if((n = read(log_file, (void *) value_buffer, value_size)) > 0){
+						if(kv_add_node((uint32_t) msg_buffer[1], value_size, value_buffer, 1) == -1){
+							perror("Allocating nodes on database");
+							close(log_file);
+							free(value_buffer);
+							return -1;
+						}
+					}else{
+						perror("Possible error on log read");
+						close(log_file);
+						free(value_buffer);
+						return -1;
+					}
+					
+					free(value_buffer);
+					break;
+				case(LOG_DELETE):
+					kv_delete_node(msg_buffer[1]);
+					break;
+				default:
+					/* Just in case */
+					break;
+			}
+		}	
+	}else{
+		/* If log doesn't exist, check for backup */ 
+		if(access(BACKUP_NAME, F_OK) == 0){
+			if((backup_file = open(BACKUP_NAME, O_RDWR)) == -1) return -1;
+			if(open_file(&log_file, LOG_TEMP) == -1){
+				close(backup_file);
+				return -1;
+			} 
+			
+			while((n = read(backup_file, (void *) msg_buffer, 3 * sizeof(int))) > 0){
 				value_size = msg_buffer[2];
 
 				/* Allocate memory for variable */
 				value_buffer = (char *) malloc(value_size);
 				if(value_buffer == NULL){
 					perror("Allocating backup read buffer");
-					kv_delete_database(-1);
 					close(backup_file);
-					exit(-1);
+					close(log_file);
+					free(value_buffer);
+					unlink(LOG_TEMP);
+					return -1;
 				}else if((n = read(backup_file, (void *) value_buffer, value_size)) > 0){
 					if(kv_add_node((uint32_t) msg_buffer[1], value_size, value_buffer, 1) == -1){
 						perror("Allocating nodes on database");
-						kv_delete_database(-1);
 						close(backup_file);
-						exit(-1);
+						close(log_file);
+						free(value_buffer);
+						unlink(LOG_TEMP);
+						return -1;
+					}else if(write_log(LOG_WRITE, (uint32_t) msg_buffer[1], value_size, value_buffer) == -1){
+						perror("Writing on log");
+						close(backup_file);
+						free(value_buffer);
+						unlink(LOG_TEMP);
+						return -1;
 					}
 				}else{
 					perror("Possible error on backup read");
-					kv_delete_database(-1);
 					close(backup_file);
-					exit(-1);
+					close(log_file);
+					free(value_buffer);
+					unlink(LOG_TEMP);
+					return -1;
 				}
-				break;
-			case(BACKUP_DELETE):
-				kv_delete_node(msg_buffer[1]);
-				break;
-			default:
-				/* Just in case */
-				break;
-		}
+				
+				free(value_buffer);
+			}
+			
+			if(rename(LOG_TEMP, LOG_NAME) == -1){
+				perror("Renaming temporary file");
+				close(log_file);
+				close(backup_file);
+				return -1;
+			}
+			close(backup_file);
+			unlink(BACKUP_NAME);
+		/* No files => new log */
+		}else{
+			if(open_file(&log_file, LOG_NAME) == -1) return -1;
+		}		
 	}
-
+	
 	return n;
 }
 
@@ -179,18 +265,6 @@ void kv_delete_database(int index){
 int database_init(){
 	int index;
 
-	/* Setting backup file */
-	if((backup_file = open(BACKUP_NAME, O_RDWR | O_CREAT | O_EXCL, 0666)) == -1){
-		switch(errno){
-			case(EEXIST):
-				if((backup_file = open(BACKUP_NAME, O_RDWR)) != -1)
-					break;
-			default:
-				return -1;
-				break;
-		}
-	}
-
 	if((index = mutex_init()) != 0){
 		kv_delete_mutex(index);
 		return -1;
@@ -207,11 +281,10 @@ int database_init(){
 			(database[index])->value = NULL;
 			(database[index])->next = NULL;
 		}
-
-		if(restore_backup() == -1){
-			perror("Error on backup read");
+		
+		if(restore_database() == -1){
+			perror("Error on restore_database");
 			kv_delete_database(-1);
-			close(backup_file);
 			exit(-1);
 		}
 

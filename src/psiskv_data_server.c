@@ -46,15 +46,15 @@ void * database_handler(void * arg){
 		/* Process message header */
 		switch(msg.operation){
 			case(KV_READ):
-				server_read(&sock_in, msg.key);
+				error = server_read(&sock_in, msg.key);
 				break;
 			case(KV_WRITE):
 			case(KV_OVERWRITE):
 				overwrite = (msg.operation == KV_OVERWRITE) ? 1 : 0;
-				server_write(&sock_in, msg.key, msg.data_length, overwrite);
+				error = server_write(&sock_in, msg.key, msg.data_length, overwrite);
 				break;
 			case(KV_DELETE):
-				server_delete(&sock_in, msg.key);
+				error = server_delete(&sock_in, msg.key);
 				break;
 			default:
 				printf("Unknown message operation\n");

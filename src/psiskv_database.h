@@ -17,10 +17,13 @@
 #define DATABASE_EQUAL 0
 #define DATABASE_NOT_EQUAL 1
 
-#define BACKUP_WRITE 1
-#define BACKUP_DELETE 2
+#define LOG_WRITE 1
+#define LOG_DELETE 2
 
 #define BACKUP_NAME "backup"
+#define BACKUP_TEMP "~backup"
+#define LOG_NAME	"log"
+#define LOG_TEMP	"~log"
 
 typedef struct key_value_node{
 	uint32_t key;
@@ -32,8 +35,8 @@ typedef struct key_value_node{
 
 /* --- Auxiliary Functions --- */
 void print_database();
-int write_backup(int operation, uint32_t key, int value_size, char * value);
-int restore_backup();
+int write_log(int operation, uint32_t key, int value_size, char * value);
+int restore_database();
 
 /* --- Mutex core functions --- */
 void kv_delete_mutex(int index);

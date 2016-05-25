@@ -110,8 +110,8 @@ int server_write(int * sock_in, uint32_t key, int value_length, int overwrite){
 						if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 							error_and_close(sock_in, "Failed to send KV_WRITE SUCCESS.\n");
 
-						if(write_backup(BACKUP_WRITE, key, value_length, value) == -1){
-							perror("Writing on backup");
+						if(write_log(LOG_WRITE, key, value_length, value) == -1){
+							perror("Writing on log");
 							return 1;
 						}
 
@@ -181,7 +181,7 @@ int server_delete(int * sock_in, uint32_t key){
 		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
 			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
 
-		if(write_backup(BACKUP_DELETE, key, 0, NULL) == -1){
+		if(write_log(LOG_DELETE, key, 0, NULL) == -1){
 			perror("Writing on backup");
 			return 1;
 		}
