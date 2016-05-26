@@ -1,3 +1,5 @@
+#include <signal.h>
+#include <stdlib.h>
 #include <pthread.h>
 
 #include "interprocess.h"
@@ -15,8 +17,7 @@ struct sockaddr_un peer;
 void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
-		close(listener);
-		write_backup();
+		close(front_sock);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -25,7 +26,7 @@ void sig_handler(int sig_number){
 }
 
 
-int main(){
+int main(int argc, char ** argv){
 	char buffer[BUFFSIZE];
 	// pid_t call_data
 
@@ -37,7 +38,7 @@ int main(){
 			perror("Couldn't call data server");
 			exit(-1);
 		case 0:
-			execv("./data_server", NULL);
+			execv("./data_server", argv);
 		default:
 			/* Just in case */
 			break;
@@ -48,8 +49,8 @@ int main(){
 		exit(-1);
 	}
 
-	sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, (struct sockaddr *) &peer, sizeof(peer));
-	recv(front_sock, buffer, BUFFSIZE);
+	sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+	recv(front_sock, buffer, BUFFSIZE, 0);
 
 	printf("I'm FRONT and I received %s!\n", buffer);
     exit(0);

@@ -10,7 +10,7 @@ DATA_SERVER_OBJ = interprocess.o psiskv_data_server_lib.o psiskv_database.o comm
 
 ######### Make all targets ##########
 
-all: clean client data_server
+all: clean client data_server front_server
 
 ######### Main objects for program usage #############
 # client: program used for client side               #
@@ -20,7 +20,6 @@ all: clean client data_server
 
 client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
-
 
 front_server: psiskv_front_server.c $(FRONT_SERVER_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)

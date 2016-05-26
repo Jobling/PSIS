@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define FRONT_SOCK_ADDR "./front_socket"
-#define DATA_SOCK_ADDR "./data_socket"
+#define FRONT_SOCK_ADDR "/temp/front_socket"
+#define DATA_SOCK_ADDR "/temp/data_socket"
 
 #define FRONT 0
 #define DATA 1

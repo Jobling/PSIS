@@ -106,7 +106,7 @@ int main(){
 	signal(SIGINT, sig_handler);
 	
 	if(ONLINE){
-		listener = server_init(BACKLOG);
+		listener = server_init(BACKLOG, &available_port);
 		if(listener == -1){
 			exit(-1);
 		}
@@ -137,8 +137,8 @@ int main(){
 			 exit(-1);
 			}
 			
-		sendto(data_sock,"Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") +1, (struct sockaddr *) &peer, sizeof(peer));
-		recv(data_sock, buffer, BUFFSIZE);
+		sendto(data_sock, "Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+		recv(data_sock, buffer, BUFFSIZE, 0);
 		printf("Front sent:%s\n", buffer);
 		
 	}
