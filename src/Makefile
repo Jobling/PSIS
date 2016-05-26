@@ -4,6 +4,7 @@ LIBS = -pthread
 EDITOR = geany
 
 CLIENT_OBJ = psiskv_lib.o comm_utils.o
+FRONT_SERVER_OBJ = 
 DATA_SERVER_OBJ = psiskv_data_server_lib.o psiskv_database.o comm_utils.o
 
 ######### Make all targets ##########
@@ -18,6 +19,10 @@ all: clean client data_server
 
 client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
+
+
+server: psiskv_front_server.c $(FRONT_SERVER_OBJ) data_server 
+	
 
 data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)

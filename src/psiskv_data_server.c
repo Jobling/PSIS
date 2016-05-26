@@ -1,4 +1,4 @@
-#include "psiskv_server_lib.h"
+#include "psiskv_data_server_lib.h"
 
 #define NUM_THREADS 10
 #define BACKLOG 5
@@ -70,8 +70,6 @@ void * database_handler(void * arg){
 		}
 	}
 }
-
-
 
 /* Function meant to receive commands from keyboard */
 void keyboard_handler(void * arg){
