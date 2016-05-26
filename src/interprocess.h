@@ -11,10 +11,8 @@
 #define FRONT_SOCK_ADDR "/tmp/front_socket"
 #define DATA_SOCK_ADDR "/tmp/data_socket"
 
-#define FRONT_RECV 0
-#define FRONT_SEND 1
-#define DATA_RECV 2
-#define DATA_SEND 3
+#define FRONT 0
+#define DATA 1
 
 int create_socket(int server_type, struct sockaddr_un * peer_addr);
 

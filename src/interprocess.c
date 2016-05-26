@@ -15,21 +15,16 @@ int create_socket(int server_type, struct sockaddr_un * peer_addr){
         return -1;
     }
     
+    peer_addr->sun_family = AF_UNIX;
+    local_addr.sun_family = AF_UNIX;
+    
     switch(server_type){
-		case(FRONT_SEND):
-			peer_addr->sun_family = AF_UNIX;
+		case(FRONT):
 			strcpy(peer_addr->sun_path, DATA_SOCK_ADDR);
-			return sock;
-		case(DATA_SEND):
-			peer_addr->sun_family = AF_UNIX;
-			strcpy(peer_addr->sun_path, FRONT_SOCK_ADDR);
-			return sock;
-		case(FRONT_RECV):
-			local_addr.sun_family = AF_UNIX;
 			strcpy(local_addr.sun_path, FRONT_SOCK_ADDR);
 			break;
-		case(DATA_RECV):
-			local_addr.sun_family = AF_UNIX;
+		case(DATA):
+			strcpy(peer_addr->sun_path, FRONT_SOCK_ADDR);
 			strcpy(local_addr.sun_path, DATA_SOCK_ADDR);
 			break;
 		default:

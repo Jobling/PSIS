@@ -10,8 +10,7 @@
 
 /* Global variables */
 int listener;
-int data_sock_send;
-int data_sock_recv;
+int data_sock;
 int available_port;
 struct sockaddr_un peer;
 
@@ -133,15 +132,14 @@ int main(){
 		}
 	}else{
 		/* Test interprocess communication */
-		data_sock_send = create_socket(DATA_SEND, &peer);
-		data_sock_recv = create_socket(DATA_RECV, NULL);
-		if((data_sock_send == -1) || (data_sock_recv == -1)){
+		data_sock = create_socket(DATA, &peer);
+		if(data_sock == -1){
 			 exit(-1);
 		}
 		
 		sleep(1);
-		recv(data_sock_recv, buffer, BUFFSIZE, 0);	
-		sendto(data_sock_send, "Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+		recv(data_sock, buffer, BUFFSIZE, 0);	
+		sendto(data_sock, "Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
 		printf("Front sent:%s\n", buffer);
 		
 	}
