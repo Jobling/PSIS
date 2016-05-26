@@ -2,6 +2,7 @@ CC = gcc
 CFLAGS = -Wall -g
 LIBS = -pthread
 EDITOR = geany
+DEPS = message.h
 
 CLIENT_OBJ = psiskv_lib.o comm_utils.o
 FRONT_SERVER_OBJ = interprocess.o
@@ -21,8 +22,8 @@ client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 
-server: psiskv_front_server.c $(FRONT_SERVER_OBJ) data_server
-
+front_server: psiskv_front_server.c $(FRONT_SERVER_OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
