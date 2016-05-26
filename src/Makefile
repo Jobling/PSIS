@@ -4,8 +4,8 @@ LIBS = -pthread
 EDITOR = geany
 
 CLIENT_OBJ = psiskv_lib.o comm_utils.o
-FRONT_SERVER_OBJ = 
-DATA_SERVER_OBJ = psiskv_data_server_lib.o psiskv_database.o comm_utils.o
+FRONT_SERVER_OBJ = interprocess.o
+DATA_SERVER_OBJ = interprocess.o psiskv_data_server_lib.o psiskv_database.o comm_utils.o
 
 ######### Make all targets ##########
 
@@ -21,8 +21,8 @@ client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 
-server: psiskv_front_server.c $(FRONT_SERVER_OBJ) data_server 
-	
+server: psiskv_front_server.c $(FRONT_SERVER_OBJ) data_server
+
 
 data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
@@ -51,7 +51,7 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 # git_push: commits and pushes files    #
 # edit: opens files to change project   #
 # clean: cleans dependencies from make  #
-#########################################	
+#########################################
 
 edit:
 	@echo "Opening $(EDITOR)"
