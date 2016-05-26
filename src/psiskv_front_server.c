@@ -1,8 +1,14 @@
+#include <pthread.h>
+
 #include "interprocess.h"
 
 #define BUFFSIZE 256
+#define LISTENER_PORT 9999
 
-#define DEBUG 0
+/* Global variables */
+int data_listener = -1;
+int front_sock;
+struct sockaddr_un peer;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
@@ -20,22 +26,31 @@ void sig_handler(int sig_number){
 
 
 int main(){
-	int i;
-	// pthread_t keyboard_thread;
-	pid_t call_data
+	char buffer[BUFFSIZE];
+	// pid_t call_data
+
 
 	signal(SIGINT, sig_handler);
-	listener = server_init(BACKLOG);
-	
+
 	switch(fork()){
 		case -1	:
 			perror("Couldn't call data server");
 			exit(-1);
 		case 0:
-			execve("./data_server", NULL, NULL);
+			execv("./data_server", NULL);
 		default:
+			/* Just in case */
 			break;
-	
-	//create_socket(int);
+	}
+
+	front_sock = create_socket(FRONT, &peer);
+	if(front_sock == -1){
+		exit(-1);
+	}
+
+	sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, (struct sockaddr *) &peer, sizeof(peer));
+	recv(front_sock, buffer, BUFFSIZE);
+
+	printf("I'm FRONT and I received %s!\n", buffer);
     exit(0);
 }
