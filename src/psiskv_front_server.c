@@ -10,6 +10,7 @@
 /* Global variables */
 int data_listener = -1;
 int front_sock;
+int count = 0;
 struct sockaddr_un peer;
 
 /* Handle SIGINT signal to perform
@@ -25,14 +26,36 @@ void sig_handler(int sig_number){
 	}
 }
 
+/* Handle incoming receives from data server */
+void heartbeat_recv(void * arg){
+	char buffer[BUFFSIZE];
+	while(1){
+		recv(front_sock, buffer, BUFFSIZE, 0);
+		printf("DATA SERVER IS ALIVE. For now...\n");
+		timeout = 0;
+	}
+}
+
+/* Handle outgoing sends to data server */
+void heartbeat_send(void * arg){
+	while(1){
+		sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+		count++;
+		if(count == TIMEOUT){
+			printf("DATA SERVER IS DEAD!\nRIP X.X\n");
+			sig_handler(SIGINT);
+		}
+		sleep(1);
+	}
+}
+
 
 int main(int argc, char ** argv){
-	char buffer[BUFFSIZE];
+	pthread_t heartbeat[2];
 	// pid_t call_data
 
 
 	signal(SIGINT, sig_handler);
-
 	switch(fork()){
 		case -1	:
 			perror("Couldn't call data server");
@@ -49,10 +72,11 @@ int main(int argc, char ** argv){
 		exit(-1);
 	}
 
-	sleep(1);
-	sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
-	recv(front_sock, buffer, BUFFSIZE, 0);
+	if(pthread_create(&heartbeat[0], NULL, heartbeat_recv, NULL) != 0){
+		perror("Creating thread");
+		sig_handler(SIGINT);
+	}
 
-	printf("I'm FRONT and I received %s!\n", buffer);
+	heartbeat_send(NULL);
     exit(0);
 }
