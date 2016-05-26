@@ -8,11 +8,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define FRONT_SOCK_ADDR "/temp/front_socket"
-#define DATA_SOCK_ADDR "/temp/data_socket"
+#define FRONT_SOCK_ADDR "/tmp/front_socket"
+#define DATA_SOCK_ADDR "/tmp/data_socket"
 
-#define FRONT 0
-#define DATA 1
+#define FRONT_RECV 0
+#define FRONT_SEND 1
+#define DATA_RECV 2
+#define DATA_SEND 3
 
 int create_socket(int server_type, struct sockaddr_un * peer_addr);
 
