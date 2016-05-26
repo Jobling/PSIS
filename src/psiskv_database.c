@@ -91,7 +91,6 @@ int write_backup(){
 				buffer_size = 3 * sizeof(int) + aux->value_size;
 				buffer = (void *) malloc(buffer_size);
 				if(buffer == NULL){
-					close_descriptors();
 					return -1;
 				}
 
@@ -111,7 +110,6 @@ int write_backup(){
 
 	if(rename(BACKUP_TEMP, BACKUP_NAME) == -1){
 		perror("Renaming temporary file");
-		close_descriptors();
 		return -1;
 	}
 
@@ -139,7 +137,6 @@ int write_log(int operation, uint32_t key, int value_size, char * value){
 			buffer_size = 3 * sizeof(int) + value_size;
 			buffer = (void *) malloc(buffer_size);
 			if(buffer == NULL){
-				close(log_file);
 				return -1;
 			}
 
@@ -151,7 +148,6 @@ int write_log(int operation, uint32_t key, int value_size, char * value){
 			buffer_size = 3 * sizeof(int);
 			buffer = (void *) malloc(buffer_size);
 			if(buffer == NULL){
-				close(log_file);
 				return -1;
 			}
 
@@ -165,10 +161,7 @@ int write_log(int operation, uint32_t key, int value_size, char * value){
 	n = write(log_file, buffer, buffer_size);
 	free(buffer);
 
-	if(n < 0){
-		close(log_file);
-		return -1;
-	}else return 0;
+	return (n < 0) ? -1:0;
 }
 
 /* This function restores database based on backup file
@@ -194,19 +187,16 @@ int restore_database(){
 					value_buffer = (char *) malloc(value_size);
 					if(value_buffer == NULL){
 						perror("Allocating backup read buffer");
-						close(log_file);
 						free(value_buffer);
 						return -1;
 					}else if((n = read(log_file, (void *) value_buffer, value_size)) > 0){
 						if(kv_add_node((uint32_t) msg_buffer[1], value_size, value_buffer, 1) == -1){
 							perror("Allocating nodes on database");
-							close(log_file);
 							free(value_buffer);
 							return -1;
 						}
 					}else{
 						perror("Possible error on log read");
-						close(log_file);
 						free(value_buffer);
 						return -1;
 					}
@@ -225,7 +215,6 @@ int restore_database(){
 		if(access(BACKUP_NAME, F_OK) == 0){
 			if((backup_file = open(BACKUP_NAME, O_RDWR)) == -1) return -1;
 			if(open_file(&log_file, LOG_TEMP) == -1){
-				close(backup_file);
 				return -1;
 			}
 
@@ -236,30 +225,23 @@ int restore_database(){
 				value_buffer = (char *) malloc(value_size);
 				if(value_buffer == NULL){
 					perror("Allocating backup read buffer");
-					close(backup_file);
-					close(log_file);
 					free(value_buffer);
 					unlink(LOG_TEMP);
 					return -1;
 				}else if((n = read(backup_file, (void *) value_buffer, value_size)) > 0){
 					if(kv_add_node((uint32_t) msg_buffer[1], value_size, value_buffer, 1) == -1){
 						perror("Allocating nodes on database");
-						close(backup_file);
-						close(log_file);
 						free(value_buffer);
 						unlink(LOG_TEMP);
 						return -1;
 					}else if(write_log(LOG_WRITE, (uint32_t) msg_buffer[1], value_size, value_buffer) == -1){
 						perror("Writing on log");
-						close(backup_file);
 						free(value_buffer);
 						unlink(LOG_TEMP);
 						return -1;
 					}
 				}else{
 					perror("Possible error on backup read");
-					close(backup_file);
-					close(log_file);
 					free(value_buffer);
 					unlink(LOG_TEMP);
 					return -1;
@@ -268,11 +250,10 @@ int restore_database(){
 
 			if(rename(LOG_TEMP, LOG_NAME) == -1){
 				perror("Renaming temporary file");
-				close(log_file);
-				close(backup_file);
 				return -1;
 			}
 			close(backup_file);
+			backup_file = -1;
 			unlink(BACKUP_NAME);
 		/* No files => new log */
 		}else{
@@ -280,7 +261,7 @@ int restore_database(){
 		}
 	}
 
-	return n;
+	return 0;
 }
 
 /*
@@ -335,6 +316,7 @@ void kv_delete_database(int index){
         }
     }
     kv_delete_mutex(-1);
+    close_descriptors();
 
 	return;
 }

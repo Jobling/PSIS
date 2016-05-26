@@ -4,7 +4,7 @@ LIBS = -pthread
 EDITOR = geany
 
 CLIENT_OBJ = psiskv_lib.o comm_utils.o
-SERVER_OBJ = psiskv_server_lib.o psiskv_database.o comm_utils.o
+DATA_SERVER_OBJ = psiskv_data_server_lib.o psiskv_database.o comm_utils.o
 
 ######### Make all targets ##########
 
@@ -19,7 +19,7 @@ all: clean client data_server
 client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-data_server: psiskv_data_server.c  $(SERVER_OBJ) $(DEPS)
+data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 ########## Development compiling ###############
@@ -27,7 +27,7 @@ data_server: psiskv_data_server.c  $(SERVER_OBJ) $(DEPS)
 # test: creates executables based on test code #
 ################################################
 
-objects: $(CLIENT_OBJ) $(SERVER_OBJ)
+objects: $(CLIENT_OBJ) $(DATA_SERVER_OBJ)
 
 test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 
