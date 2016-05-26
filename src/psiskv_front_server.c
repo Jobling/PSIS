@@ -1,3 +1,5 @@
+#include "interprocess.h"
+
 #define BUFFSIZE 256
 
 #define DEBUG 0
@@ -25,7 +27,7 @@ int main(){
 	signal(SIGINT, sig_handler);
 	listener = server_init(BACKLOG);
 	
-	switch(call_data = fork()){
+	switch(fork()){
 		case -1	:
 			perror("Couldn't call data server");
 			exit(-1);

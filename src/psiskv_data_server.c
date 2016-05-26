@@ -1,10 +1,12 @@
-#include "psiskv_server_lib.h"
+#include "interprocess.h"
+#include "psiskv_data_server_lib.h"
 
 #define NUM_THREADS 10
 #define BACKLOG 5
 #define BUFFSIZE 256
 
 #define DEBUG 0
+#define ONLINE 0
 
 /* Global variables */
 int listener;
@@ -71,8 +73,6 @@ void * database_handler(void * arg){
 	}
 }
 
-
-
 /* Function meant to receive commands from keyboard */
 void keyboard_handler(void * arg){
 	char input[BUFFSIZE];
@@ -99,27 +99,32 @@ int main(){
 	// pthread_t keyboard_thread;
 
 	signal(SIGINT, sig_handler);
-	listener = server_init(BACKLOG);
-	if(database_init()){
-		perror("Database");
-		close(listener);
-		exit(-1);
-	}
+	
+	if(ONLINE){
+		listener = server_init(BACKLOG);
+		if(database_init()){
+			perror("Database");
+			close(listener);
+			exit(-1);
+		}
 
-    if(DEBUG)
-        database_handler(NULL);
-    else{
-        for(i = 0; i < NUM_THREADS; i++){
-            if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
-                perror("Creating threads");
-                close(listener);
-                kv_delete_database(-1);
-                exit(-1);
-            }
-        }
-        printf("All threads deployed\n");
-        keyboard_handler(NULL);
-    }
+		if(DEBUG)
+			database_handler(NULL);
+		else{
+			for(i = 0; i < NUM_THREADS; i++){
+				if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
+					perror("Creating threads");
+					close(listener);
+					kv_delete_database(-1);
+					exit(-1);
+				}
+			}
+			printf("All threads deployed\n");
+			keyboard_handler(NULL);
+		}
+	}else{
+		/* Test interprocess communication */
+	}
 
     exit(0);
 }

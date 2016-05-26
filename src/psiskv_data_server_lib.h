@@ -8,11 +8,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
-
+#include <errno.h>
 
 #include "message.h"
 #include "comm_utils.h"
 #include "psiskv_database.h"
+
+#define LISTEN_PORT 6000
 
 /* --- Auxiliary functions --- */
 void error_and_close(int * sock_in, char * warning);

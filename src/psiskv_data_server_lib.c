@@ -1,4 +1,4 @@
-#include "psiskv_server_lib.h"
+#include "psiskv_data_server_lib.h"
 
 /* 
    #####################################################################
@@ -43,7 +43,7 @@ int get_message_header(int * sock_in, message * msg){
 
 /* Initialize listening socket listener */
 int server_init(int backlog){
-	int listener;
+	int listener, port;
 	struct sockaddr_in local_addr;
 
 	/* Create socket */
@@ -52,18 +52,24 @@ int server_init(int backlog){
 		exit(-1);
 	}
 
-	/* Create address */
+	/* Create (partial) address */
 	local_addr.sin_family = AF_INET;
-	local_addr.sin_port = htons(9999);
 	local_addr.sin_addr.s_addr = INADDR_ANY;
+	port = LISTEN_PORT;
 
 	/* Bind socket to address */
-	if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
-		perror("Bind");
-		close(listener);
-		exit(-1);
+	while(1){
+		port++;
+		local_addr.sin_port = htons(port);
+		if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
+			if(errno != EADDRINUSE){
+				perror("Bind");
+				close(listener);
+				exit(-1);
+			}
+		}else break;	
 	}
-
+	
     /* Start listening on the bound socket */
     if(listen(listener, backlog) == -1){
 		perror("Listen");

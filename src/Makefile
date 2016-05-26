@@ -32,7 +32,7 @@ data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 # test: creates executables based on test code #
 ################################################
 
-objects: $(CLIENT_OBJ) $(DATA_SERVER_OBJ)
+objects: $(CLIENT_OBJ) $(DATA_SERVER_OBJ) $(FRONT_SERVER_OBJ)
 
 test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 
@@ -55,7 +55,7 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 
 edit:
 	@echo "Opening $(EDITOR)"
-	@$(EDITOR) *.h psiskv*.c comm*.c Makefile &
+	@$(EDITOR) *.h *.c Makefile &
 
 clean:
 	@rm -f data_server client *.o
