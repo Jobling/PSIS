@@ -10,6 +10,10 @@
 
 /* Global variables */
 int listener;
+int data_sock;
+int available_port;
+struct sockaddr_un peer;
+
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
@@ -95,6 +99,7 @@ void keyboard_handler(void * arg){
 
 int main(){
 	int i;
+	char buffer[BUFFSIZE];
 	pthread_t database_threads[NUM_THREADS];
 	// pthread_t keyboard_thread;
 
@@ -102,6 +107,9 @@ int main(){
 	
 	if(ONLINE){
 		listener = server_init(BACKLOG);
+		if(listener == -1){
+			exit(-1);
+		}
 		if(database_init()){
 			perror("Database");
 			close(listener);
@@ -124,6 +132,15 @@ int main(){
 		}
 	}else{
 		/* Test interprocess communication */
+		data_sock = create_socket(DATA, &peer);
+		if( data_sock == -1){
+			 exit(-1);
+			}
+			
+		sendto(data_sock,"Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") +1, (struct sockaddr *) &peer, sizeof(peer));
+		recv(data_sock, buffer, BUFFSIZE);
+		printf("Front sent:%s\n", buffer);
+		
 	}
 
     exit(0);

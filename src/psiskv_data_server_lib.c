@@ -41,15 +41,19 @@ int get_message_header(int * sock_in, message * msg){
    #####################################################################
 */
 
-/* Initialize listening socket listener */
-int server_init(int backlog){
+/* Initialize listening socket listener 
+ * Updates value referenced by available_port   
+ * 
+ * This function returns listening socket on success
+ * This function returns -1 if an error occurs */
+int server_init(int backlog, int * available_port){
 	int listener, port;
 	struct sockaddr_in local_addr;
 
 	/* Create socket */
 	if((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket");
-		exit(-1);
+		return -1;
 	}
 
 	/* Create (partial) address */
@@ -65,16 +69,17 @@ int server_init(int backlog){
 			if(errno != EADDRINUSE){
 				perror("Bind");
 				close(listener);
-				exit(-1);
+				return -1;
 			}
 		}else break;	
 	}
 	
+	*available_port = port;
     /* Start listening on the bound socket */
     if(listen(listener, backlog) == -1){
 		perror("Listen");
 		close(listener);
-		exit(-1);
+		return -1;
 	}
 	printf("Socket created and binded.\nListening\n");
 	return listener;

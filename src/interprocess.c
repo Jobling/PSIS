@@ -32,6 +32,7 @@ int create_socket(int server_type, struct sockaddr_un * peer_addr){
 			break;
 	}
 	
+	unlink(local_addr.sun_path);
 	if(bind(sock, (struct sockaddr *) &local_addr, sizeof(local_addr)) == -1){
 		perror("bind");
 		close(sock);
