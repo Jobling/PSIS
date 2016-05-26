@@ -9,10 +9,21 @@ void sig_handler(int sig_number){
 		printf("\nExiting cleanly\n");
 		close(listener);
 		write_backup();
-		kv_delete_database(-1);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
 		exit(-1);
 	}
+}
+
+
+int main(){
+	int i;
+	// pthread_t keyboard_thread;
+
+	signal(SIGINT, sig_handler);
+	listener = server_init(BACKLOG);
+
+
+    exit(0);
 }
