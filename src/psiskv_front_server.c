@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 
 #include "interprocess.h"
@@ -31,7 +32,6 @@ void sig_handler(int sig_number){
 void * heartbeat_recv(void * arg){
 	while(1){
 		recv(front_sock, &data_listener, sizeof(int), 0);
-		printf("DATA SERVER IS ALIVE. For now...\n");
 		count = 0;
 	}
 }
@@ -54,7 +54,7 @@ void * heartbeat_send(void * arg){
  *
  * This function returns listening socket on success
  * This function returns -1 if an error occurs */
-int server_init(){
+int server_init(socklen_t * addrlen){
 	int listener;
 	struct sockaddr_in local_addr;
 
@@ -75,15 +75,19 @@ int server_init(){
 		close(listener);
 		return -1;
 	}
-
+	
 	printf("Front server ready to receive requests\n");
+	
+	*addrlen = sizeof(local_addr);
 	return listener;
 }
 
 int main(int argc, char ** argv){
 	int nbytes, ignore;
 	struct sockaddr_in client;
+	socklen_t addrlen;
 	pthread_t heartbeat[2];
+	
 	// pid_t call_data
 
 
@@ -114,15 +118,15 @@ int main(int argc, char ** argv){
 		sig_handler(SIGINT);
 	}
 
-	listener = server_init();
+	listener = server_init(&addrlen);
 	if(listener == -1){
 		exit(-1);
 	}
 
 	while(1){
-		nbytes = recvfrom(listener, &ignore, sizeof(int), 0, (struct sockaddr *) &client, sizeof(client));
+		nbytes = recvfrom(listener, &ignore, sizeof(int), 0, (struct sockaddr *) &client, &addrlen);
 		if(nbytes > 0){
-			nbytes = sendto(listener, &data_listener, sizeof(int), 0, (struct sockaddr *) &client, sizeof(client));
+			nbytes = sendto(listener, &data_listener, sizeof(int), 0, (struct sockaddr *) &client, addrlen);
 			if(nbytes <= 0){
 				perror("Sending replies");
 				exit(-1);

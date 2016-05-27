@@ -5,10 +5,14 @@
  * This function returns a key-value store descriptor.
  * This function returns -1 in case of error */
 int kv_connect(char * kv_server_ip, int kv_server_port){
-	struct sockaddr_in server_addr;
-	struct sockaddr aux_addr;
-	int kv_descriptor;
+	int kv_descriptor, nbytes;
 	char ip[BUFFSIZE];
+	struct hostent * h;
+	struct in_addr * a;
+	struct sockaddr_in addr, server_addr;
+	socklen_t addrlen;
+	
+	int port = UDP_PORT;
 	
 	/*	Create UDP socket */
 	if((kv_descriptor = socket(AF_INET, SOCK_DGRAM, 0)) == -1){
@@ -16,52 +20,79 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		return -1;
 	}
 	
-	gethostname(ip, BUFFSIZE)
-	
-	aux_addr.sin_family = AF_INET;
-	aux_addr.sin_port = htons(kv_server_port);
-	
-	if (bind (kv_descriptor, (const struct sockaddr *) &, sizeof()) < 0){
-		perror ("bind");
-		exit (EXIT_FAILURE);
-    }
-
-	/*struct sockaddr_in getIP(char * ip, int port){
-	struct hostent *h;
-	struct in_addr *a, *b;
-	struct sockaddr_in addr;
-	
-	if((h = gethostbyname(ip))==NULL){
-		exit(1);
+	/* Create client address */
+	gethostname(ip, BUFFSIZE);
+	if((h = gethostbyname(ip)) == NULL){
+		close(kv_descriptor);
+		return -1;
 	}	
 	
-	a=(struct in_addr*)h->h_addr_list[0];
+	a = (struct in_addr *) h->h_addr_list[0];
 	
-	memset((void*)&addr,(int)'\0', sizeof(addr));
-	addr.sin_family=AF_INET;
-	addr.sin_addr= *a;
-	addr.sin_port=htons(port);
-
-	return addr;
-	}*/
-
+	memset((void*)&addr,(int) '\0', sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = *a;
+	while(1){
+		addr.sin_port = htons(port);
+		
+		/* Bind client address */
+		if(bind(kv_descriptor, (const struct sockaddr *) &addr, sizeof(addr)) == -1){
+			if(errno != EADDRINUSE){
+				perror("bind");
+				close(kv_descriptor);
+				return -1;
+			}
+		}else break;
+		
+		port++;
+	}
+	
+	/* Create front server address */
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(kv_server_port);
+	if(!inet_aton(kv_server_ip, &server_addr.sin_addr)){
+		perror("Bad address");
+		close(kv_descriptor);
+		return -1;
+	}
+	
+	addrlen = sizeof(server_addr);
+	
+	/* Send request for front server */
+	nbytes = sendto(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, addrlen);
+	if(nbytes <= 0){
+		perror("Sending request");
+		close(kv_descriptor);
+		return -1;
+	}
+	
+	/* Receive Reply from front server (with data server port) */
+	nbytes = recvfrom(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, &addrlen);
+	if(nbytes <= 0){
+		perror("Receiving reply");
+		close(kv_descriptor);
+		return -1;
+	}
+	
+	/* Close Front Server socket */
+	close(kv_descriptor);
+	
+	if(kv_server_port == -1){
+		printf("Data server offline.\n");
+		return -1;
+	}
+	
 	/* Create TCP socket  */
 	if((kv_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket");
 		return -1;
 	}
 
-	/* Create address */
-	server_addr.sin_family = AF_INET;
+	/* Connect socket to data server address */
 	server_addr.sin_port = htons(kv_server_port);
-	if(!inet_aton(kv_server_ip, &server_addr.sin_addr)){
-		perror("Bad address");
-		return -1;
-	}
-
-	/* Connect socket to server address */
 	if(connect(kv_descriptor, (const struct sockaddr *) &server_addr, sizeof(server_addr)) == -1){
 		perror("Connect");
+		close(kv_descriptor);
 		return -1;
 	}
 

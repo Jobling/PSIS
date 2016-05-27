@@ -63,7 +63,6 @@ int server_init(int backlog, int * available_port){
 
 	/* Bind socket to address */
 	while(1){
-		port++;
 		local_addr.sin_port = htons(port);
 		if(bind(listener, (struct sockaddr *)&local_addr, sizeof(local_addr)) == -1){
 			if(errno != EADDRINUSE){
@@ -71,7 +70,9 @@ int server_init(int backlog, int * available_port){
 				close(listener);
 				return -1;
 			}
-		}else break;	
+		}else break;
+		
+		port++;	
 	}
 	
 	*available_port = port;

@@ -5,7 +5,7 @@
 #define BACKLOG 5
 #define BUFFSIZE 256
 
-#define DEBUG 0
+#define DEBUG 1
 #define ONLINE 0
 
 /* Global variables */
@@ -165,9 +165,13 @@ int main(){
 			exit(-1);
 		}
 
-		if(pthread_create(&heartbeat[1], NULL, heartbeat_send, NULL) != 0){
-			perror("Creating heartbeat threads");
-			exit(-1);
+		if(DEBUG) 
+			heartbeat_send(NULL);
+		else{
+			if(pthread_create(&heartbeat[1], NULL, heartbeat_send, NULL) != 0){
+				perror("Creating heartbeat threads");
+				exit(-1);
+			}
 		}
 	}
 

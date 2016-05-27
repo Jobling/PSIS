@@ -3,7 +3,6 @@
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 9999
-#define BUFFSIZE 256
 
 #define NO_CMD -1
 #define WRITE 0
