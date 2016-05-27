@@ -11,7 +11,8 @@
 /* Global variables */
 int listener;
 int data_sock;
-int available_port;
+int available_port = -1;
+int count;
 struct sockaddr_un peer;
 
 
@@ -76,7 +77,29 @@ void * database_handler(void * arg){
 		}
 	}
 }
-
+/*Function to check pulse of front server*/
+void * heartbeat_recv(void * arg){
+	char buffer[BUFFSIZE];
+	
+	while(1){
+		recv(data_sock, buffer, BUFFSIZE, 0);
+		count = 0;
+	}
+}
+	
+/* Function to update server on status */
+void * heartbeat_send(void * arg){		
+	while(1){
+		sendto(data_sock, &available_port, sizeof(int), 0, (struct sockaddr *) &peer, sizeof(peer));
+		count++;
+		if(count == TIMEOUT){
+			printf("Front Server be Dead!\n");
+			sig_handler(SIGINT);
+		}
+		sleep(1);		
+	}
+}
+	
 /* Function meant to receive commands from keyboard */
 void keyboard_handler(void * arg){
 	char input[BUFFSIZE];
@@ -99,8 +122,8 @@ void keyboard_handler(void * arg){
 
 int main(){
 	int i;
-	char buffer[BUFFSIZE];
 	pthread_t database_threads[NUM_THREADS];
+	pthread_t heartbeat[2];
 	// pthread_t keyboard_thread;
 
 	signal(SIGINT, sig_handler);
@@ -137,11 +160,15 @@ int main(){
 			 exit(-1);
 		}
 		
-		sleep(1);
-		recv(data_sock, buffer, BUFFSIZE, 0);	
-		sendto(data_sock, "Hello Front, u r a cunt", strlen("Hello Front, u r a cunt") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
-		printf("Front sent:%s\n", buffer);
-		
+		if(pthread_create(&heartbeat[0], NULL, heartbeat_recv, NULL) != 0){
+			perror("Creating heartbeat threads");
+			exit(-1);
+		}
+
+		if(pthread_create(&heartbeat[1], NULL, heartbeat_send, NULL) != 0){
+			perror("Creating heartbeat threads");
+			exit(-1);
+		}
 	}
 
     exit(0);

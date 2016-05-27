@@ -14,6 +14,8 @@
 #define FRONT 0
 #define DATA 1
 
+#define TIMEOUT 5
+
 int create_socket(int server_type, struct sockaddr_un * peer_addr);
 
 #endif

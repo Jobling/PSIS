@@ -27,17 +27,17 @@ void sig_handler(int sig_number){
 }
 
 /* Handle incoming receives from data server */
-void heartbeat_recv(void * arg){
+void * heartbeat_recv(void * arg){
 	char buffer[BUFFSIZE];
 	while(1){
 		recv(front_sock, buffer, BUFFSIZE, 0);
 		printf("DATA SERVER IS ALIVE. For now...\n");
-		timeout = 0;
+		count = 0;
 	}
 }
 
 /* Handle outgoing sends to data server */
-void heartbeat_send(void * arg){
+void * heartbeat_send(void * arg){
 	while(1){
 		sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
 		count++;
