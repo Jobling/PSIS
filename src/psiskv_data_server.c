@@ -6,7 +6,7 @@
 #define BUFFSIZE 256
 
 #define DEBUG 1
-#define ONLINE 0
+#define ONLINE 1
 
 /* Global variables */
 int listener;
@@ -129,6 +129,23 @@ int main(){
 	signal(SIGINT, sig_handler);
 	
 	if(ONLINE){
+		/* ------------ Heartbeat -------------*/
+		data_sock = create_socket(DATA, &peer);
+		if(data_sock == -1){
+			 exit(-1);
+		}
+		
+		if(pthread_create(&heartbeat[0], NULL, heartbeat_recv, NULL) != 0){
+			perror("Creating heartbeat threads");
+			exit(-1);
+		}
+
+		if(pthread_create(&heartbeat[1], NULL, heartbeat_send, NULL) != 0){
+			perror("Creating heartbeat threads");
+			exit(-1);
+		}
+		
+		/* ------------ Database -------------*/
 		listener = server_init(BACKLOG, &available_port);
 		if(listener == -1){
 			exit(-1);
