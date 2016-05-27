@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <string.h>
+#include <termios.h>
 
 #include "interprocess.h"
 
@@ -13,6 +15,7 @@ int data_listener = -1;
 int front_sock;
 int count = 0;
 int listener;
+pthread_t heartbeat[2];
 struct sockaddr_un peer;
 
 /* Handle SIGINT signal to perform
@@ -20,6 +23,14 @@ struct sockaddr_un peer;
 void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
+		
+		/* Allows communication through sockets */
+		pthread_cancel(heartbeat[0]);
+		pthread_cancel(heartbeat[1]);
+		
+		/*Sends to Data Server a message saying it has crashed */
+		sendto(front_sock, "__GTHO__", strlen("__GTHO__") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+		
 		close(front_sock);
 		exit(0);
 	}else{
@@ -43,10 +54,40 @@ void * heartbeat_send(void * arg){
 		count++;
 		if(count == TIMEOUT){
 			printf("DATA SERVER IS DEAD!\nRIP X.X\n");
-			// data_listener = -1;
-			sig_handler(SIGINT);
+			switch(fork()){
+				case(0):
+					execl("./data_server", "./data_server", NULL);
+					perror("Data Server exec");
+				case(-1):
+					perror("Unable to restart Data Server");
+					sig_handler(SIGINT);
+				default:
+					break;
+				}
+			data_listener = -1;
 		}
 		sleep(1);
+	}
+}
+
+/* Function meant to receive commands from keyboard */
+void * keyboard_handler(void * arg){
+	char input[BUFFSIZE];
+
+	while(1){
+        if(fgets(input, BUFFSIZE, stdin) == NULL){
+            perror("fgets");
+            close(listener);
+            exit(-1);
+        }
+        if(strcasecmp(input, "quit\n") == 0){
+			sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+			printf("CLEAN EXIT HERE!\n");
+		}
+        if(strcasecmp(input, "print\n") == 0){
+			printf("Printing!\n");
+			// print_database();
+		}
 	}
 }
 
@@ -64,6 +105,10 @@ int server_init(socklen_t * addrlen){
 		return -1;
 	}
 
+	if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0){
+		perror("setsockopt(SO_REUSEADDR) failed");
+		return -1;
+    }
 	/* Create address */
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(LISTENER_PORT);
@@ -83,24 +128,47 @@ int server_init(socklen_t * addrlen){
 }
 
 int main(int argc, char ** argv){
-	int nbytes, ignore;
+	int nbytes, ignore, key;
 	struct sockaddr_in client;
 	socklen_t addrlen;
-	pthread_t heartbeat[2];
+	pthread_t keyboard;
+	struct sigaction handle;
+	
+	/* Set up the structure to specify action when signals */
+	handle.sa_handler = sig_handler;
+	sigemptyset (&handle.sa_mask);
+	handle.sa_flags = 0;
+
 	
 	// pid_t call_data
-
-
-	signal(SIGINT, sig_handler);
-	switch(fork()){
-		case -1	:
-			perror("Couldn't call data server");
-			exit(-1);
-		case 0:
-			execv("./data_server", argv);
-		default:
-			/* Just in case */
+	key = 1;
+	sigaction(SIGINT, &handle, NULL);
+	
+	switch(argc){
+		case(1):
+			/* Program started by terminal */
+			switch(fork()){
+				case -1	:
+					perror("Couldn't call data server");
+					exit(-1);
+				case 0:
+					execl("./data_server", "./data_server", NULL);
+					perror("Front Server exec");
+				default:
+					/* Just in case */
+					break;
+			}
 			break;
+		case(2):
+			/* Program started by data_server after fault */
+			if(strcmp(argv[1], "__front_server:fault__") == 0){
+				printf("Recovering Front Server\n");
+				key = 0;
+				break;
+			}
+		default:
+			printf("Too many arguments... Strange.\n");
+			exit(-1);
 	}
 
 	front_sock = create_socket(FRONT, &peer);
@@ -118,6 +186,13 @@ int main(int argc, char ** argv){
 		sig_handler(SIGINT);
 	}
 
+	if(key){
+		if(pthread_create(&keyboard, NULL, keyboard_handler, NULL) != 0){
+			perror("Creating keyboard thread");
+			exit(-1);
+		}
+	}
+	
 	listener = server_init(&addrlen);
 	if(listener == -1){
 		exit(-1);

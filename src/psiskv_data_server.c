@@ -5,14 +5,14 @@
 #define BACKLOG 5
 #define BUFFSIZE 256
 
-#define DEBUG 1
+#define DEBUG 0
 #define ONLINE 1
 
 /* Global variables */
 int listener;
+int count;
 int data_sock;
 int available_port = -1;
-int count;
 struct sockaddr_un peer;
 
 
@@ -77,12 +77,17 @@ void * database_handler(void * arg){
 		}
 	}
 }
+
 /*Function to check pulse of front server*/
 void * heartbeat_recv(void * arg){
 	char buffer[BUFFSIZE];
-	
+
 	while(1){
 		recv(data_sock, buffer, BUFFSIZE, 0);
+		if(strcmp(buffer, "__GTHO__") == 0){
+			printf("Exiting Data Server aswell\n");
+			sig_handler(SIGINT);
+		}
 		count = 0;
 	}
 }
@@ -94,39 +99,51 @@ void * heartbeat_send(void * arg){
 		count++;
 		if(count == TIMEOUT){
 			printf("Front Server be Dead!\n");
-			sig_handler(SIGINT);
+			switch(fork()){
+				case(0):
+					execl("./front_server", "./front_server", "__front_server:fault__", NULL);
+					perror("Data Server exec");
+				case(-1):
+					perror("Unable to restart Front Server");
+					sig_handler(SIGINT);
+				default:
+					break;
+				}
 		}
 		sleep(1);		
 	}
 }
-	
-/* Function meant to receive commands from keyboard */
-void keyboard_handler(void * arg){
-	char input[BUFFSIZE];
 
-	while(1){
-        if(fgets(input, BUFFSIZE, stdin) == NULL){
-            perror("fgets");
-            close(listener);
-            kv_delete_database(-1);
-            exit(-1);
-        }
-        if(strcasecmp(input, "print\n") == 0){
-			printf("Printing!\n");
-			print_database();
-		}
-	}
-
-	return;
-}
-
-int main(){
+/* Function to manage database_threads */
+void * thread_handler(void * arg){
 	int i;
 	pthread_t database_threads[NUM_THREADS];
-	pthread_t heartbeat[2];
-	// pthread_t keyboard_thread;
+	
+	for(i = 0; i < NUM_THREADS; i++){
+		if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
+			perror("Creating threads");
+			close(listener);
+			kv_delete_database(-1);
+			exit(-1);
+		}
+	}
+	printf("All threads deployed\n");
+	sleep(50);
+	
+	return NULL;
+}
 
-	signal(SIGINT, sig_handler);
+
+int main(){
+	pthread_t heartbeat[2];
+	struct sigaction handle;
+	
+	/* Set up the structure to specify action when signals */
+	handle.sa_handler = sig_handler;
+	sigemptyset (&handle.sa_mask);
+	handle.sa_flags = 0;
+
+	sigaction(SIGINT, &handle, NULL);
 	
 	if(ONLINE){
 		/* ------------ Heartbeat -------------*/
@@ -156,20 +173,11 @@ int main(){
 			exit(-1);
 		}
 
+		
 		if(DEBUG)
 			database_handler(NULL);
-		else{
-			for(i = 0; i < NUM_THREADS; i++){
-				if(pthread_create(&database_threads[i], NULL, database_handler, NULL) != 0){
-					perror("Creating threads");
-					close(listener);
-					kv_delete_database(-1);
-					exit(-1);
-				}
-			}
-			printf("All threads deployed\n");
-			keyboard_handler(NULL);
-		}
+		else
+			thread_handler(NULL);
 	}else{
 		/* Test interprocess communication */
 		data_sock = create_socket(DATA, &peer);
