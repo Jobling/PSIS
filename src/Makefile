@@ -58,7 +58,7 @@ edit:
 	@$(EDITOR) *.h *.c Makefile &
 
 clean:
-	@rm -f data_server client *.o
+	@rm -f data_server client front_server *.o
 	@echo "Cleaned."
 
 git_push: clean

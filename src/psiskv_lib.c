@@ -6,9 +6,46 @@
  * This function returns -1 in case of error */
 int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sockaddr_in server_addr;
+	struct sockaddr aux_addr;
 	int kv_descriptor;
+	char ip[BUFFSIZE];
+	
+	/*	Create UDP socket */
+	if((kv_descriptor = socket(AF_INET, SOCK_DGRAM, 0)) == -1){
+		perror("Socket");
+		return -1;
+	}
+	
+	gethostname(ip, BUFFSIZE)
+	
+	aux_addr.sin_family = AF_INET;
+	aux_addr.sin_port = htons(kv_server_port);
+	
+	if (bind (kv_descriptor, (const struct sockaddr *) &, sizeof()) < 0){
+		perror ("bind");
+		exit (EXIT_FAILURE);
+    }
 
-	/* Create socket  */
+	/*struct sockaddr_in getIP(char * ip, int port){
+	struct hostent *h;
+	struct in_addr *a, *b;
+	struct sockaddr_in addr;
+	
+	if((h = gethostbyname(ip))==NULL){
+		exit(1);
+	}	
+	
+	a=(struct in_addr*)h->h_addr_list[0];
+	
+	memset((void*)&addr,(int)'\0', sizeof(addr));
+	addr.sin_family=AF_INET;
+	addr.sin_addr= *a;
+	addr.sin_port=htons(port);
+
+	return addr;
+	}*/
+
+	/* Create TCP socket  */
 	if((kv_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket");
 		return -1;
