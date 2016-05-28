@@ -12,6 +12,9 @@ DATA_SERVER_OBJ = interprocess.o psiskv_data_server_lib.o psiskv_database.o comm
 
 all: clean objects client data_server front_server
 
+run: all
+	@./front_server
+
 ######### Main objects for program usage #############
 # client: program used for client side               #
 # server: main server program                        #
@@ -34,7 +37,7 @@ data_server: psiskv_data_server.c  $(DATA_SERVER_OBJ) $(DEPS)
 
 objects: $(CLIENT_OBJ) $(DATA_SERVER_OBJ) $(FRONT_SERVER_OBJ)
 
-test: cli-exe-1 cli-exe-par-1 cli-exe-sync
+test: 
 
 ########## Wildcard compiling #############################
 # %.o: compiles all binary (.o) files needed for programs #
@@ -42,7 +45,7 @@ test: cli-exe-1 cli-exe-par-1 cli-exe-sync
 ###########################################################
 
 %.o: %.c %.h
-	$(CC) -c -o $@ $< $(CFLAGS)
+	@$(CC) -c -o $@ $< $(CFLAGS)
 
 %: %.c psiskv_lib.o $(DEPS)
 	$(CC) -o $@ $< $(CFLAGS)
@@ -67,4 +70,4 @@ git_push: clean
 
 # Rule declaring that <clean> and <edit> are not build targets (programs)
 
-.PHONY: all objects clean edit git_push
+.PHONY: all run objects clean edit git_push

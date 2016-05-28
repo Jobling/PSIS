@@ -12,29 +12,33 @@
 
 /* Global variables */
 pid_t peer_id;
+pthread_t main_thread;
 int front_sock;
 int count = 0;
+int print = 0;
 int listener;
 int data_listener = -1;
-pthread_t heartbeat[2];
 struct sockaddr_un peer;
 
 /* Handle SIGINT signal to perform
  * a clean shutdown of the server */
 void sig_handler(int sig_number){
-	if (sig_number == SIGINT){
-		printf("\nExiting cleanly\n");
-		
-		/* Interrupt DATA_SERVER */
-		kill(peer_id, SIGINT);
-		
-		/* Cleanup */	
-		close(front_sock);
-		close(listener);
-		exit(0);
-	}else{
-		printf("Unexpected signal\n");
-		exit(-1);
+	if(pthread_self() == main_thread){
+		if(sig_number == SIGINT){
+			printf("\nFront Server: Exiting cleanly\n");
+			
+			/* Interrupt DATA_SERVER */
+			kill(peer_id, SIGINT);
+			
+			/* Cleanup */	
+			close(front_sock);
+			close(listener);
+			
+			exit(0);
+		}else{
+			printf("Unexpected signal\n");
+			exit(-1);
+		}
 	}
 }
 
@@ -49,17 +53,18 @@ void * heartbeat_recv(void * arg){
 /* Handle outgoing sends to data server */
 void * heartbeat_send(void * arg){
 	while(1){
-		sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
+		sendto(front_sock, &print, sizeof(int), 0, (struct sockaddr *) &peer, sizeof(peer));
+		if(print) print = 0;
 		count++;
 		if(count == TIMEOUT){
-			printf("DATA SERVER IS DEAD!\nRIP X.X\n");
+			printf("Data server: DOWN\n");
 			switch(fork()){
 				case(0):
 					execl("./data_server", "./data_server", NULL);
 					perror("Data Server exec");
 				case(-1):
 					perror("Unable to restart Data Server");
-					sig_handler(SIGINT);
+					raise(SIGINT);
 				default:
 					break;
 				}
@@ -80,12 +85,10 @@ void * keyboard_handler(void * arg){
             exit(-1);
         }
         if(strcasecmp(input, "quit\n") == 0){
-			sendto(front_sock, "Hello DATA!", strlen("Hello DATA!") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
-			printf("CLEAN EXIT HERE!\n");
+			raise(SIGINT);
 		}
         if(strcasecmp(input, "print\n") == 0){
-			printf("Printing!\n");
-			// print_database();
+			print = 1;
 		}
 	}
 }
@@ -123,8 +126,6 @@ int server_init(socklen_t * addrlen){
 		return -1;
 	}
 	
-	printf("Front server ready to receive requests\n");
-	
 	*addrlen = sizeof(local_addr);
 	return listener;
 }
@@ -134,17 +135,28 @@ int main(int argc, char ** argv){
 	struct sockaddr_in client;
 	socklen_t addrlen;
 	pthread_t keyboard;
+	pthread_t heartbeat[2];
 	struct sigaction handle;
-
-	/* Set up the structure to specify action when signals */
-	handle.sa_handler = sig_handler;
-	sigemptyset (&handle.sa_mask);
+	
+	main_thread = pthread_self();
+	
+	/* Set up the structure to specify action for signals */
+	sigemptyset(&handle.sa_mask);
 	handle.sa_flags = 0;
 
+	handle.sa_handler = sig_handler;
+	if(sigaction(SIGINT, &handle, NULL) == -1){ 
+		perror("Sigaction SIGPIPE");
+		exit(-1);
+	}	
+	
+	handle.sa_handler = SIG_IGN;
+	if(sigaction(SIGPIPE, &handle, NULL) == -1){
+		perror("Sigaction SIGPIPE");
+		exit(-1);
+	}
 
 	key = 1;
-	sigaction(SIGINT, &handle, NULL);
-	
 	switch(argc){
 		case(1):
 			/* Program started by terminal */
@@ -206,6 +218,7 @@ int main(int argc, char ** argv){
 		exit(-1);
 	}
 
+	printf("Front server: UP\n");
 	while(1){
 		nbytes = recvfrom(listener, &ignore, sizeof(int), 0, (struct sockaddr *) &client, &addrlen);
 		if(nbytes > 0){

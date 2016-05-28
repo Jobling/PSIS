@@ -82,7 +82,6 @@ int server_init(int backlog, int * available_port){
 		close(listener);
 		return -1;
 	}
-	printf("Socket created and binded.\nListening\n");
 	return listener;
 }
 
@@ -159,6 +158,7 @@ int server_read(int * sock_in, uint32_t key){
             msg.operation = KV_FAILURE;
             if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
                 error_and_close(sock_in, "Failed to send KV_READ failure.\n");
+            break;
         case(0):
             msg.operation = KV_SUCCESS;
             msg.data_length = (strlen(value) + 1) * sizeof(char);
@@ -184,10 +184,9 @@ int server_delete(int * sock_in, uint32_t key){
 
 	/* Delete node from database */
 	if(kv_delete_node(key) == -1){
-        printf("Warning: Key not in database.\n");
         msg.operation = KV_FAILURE;
 		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
-			error_and_close(sock_in, "Failed to send KV_DELETE SUCCESS.\n");
+			error_and_close(sock_in, "Failed to send KV_DELETE FAILURE.\n");
 	}else{
 		msg.operation = KV_SUCCESS;
 		if(kv_send(*sock_in, &msg, sizeof(message)) == -1)
@@ -200,3 +199,4 @@ int server_delete(int * sock_in, uint32_t key){
 	}
 	return 0;
 }
+
