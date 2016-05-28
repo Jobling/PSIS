@@ -127,7 +127,6 @@ int main(int argc, char ** argv){
                             kv_close(kv_socket);
                             exit(-1);
                         case(-2):
-                            printf("Key doesn't exist on server.\n");
                             break;
                         default:
                             printf("KV_READ successful: %s\n", value);

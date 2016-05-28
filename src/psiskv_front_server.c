@@ -11,10 +11,11 @@
 #define LISTENER_PORT 9999
 
 /* Global variables */
-int data_listener = -1;
+pid_t peer_id;
 int front_sock;
 int count = 0;
 int listener;
+int data_listener = -1;
 pthread_t heartbeat[2];
 struct sockaddr_un peer;
 
@@ -24,14 +25,12 @@ void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
 		printf("\nExiting cleanly\n");
 		
-		/* Allows communication through sockets */
-		pthread_cancel(heartbeat[0]);
-		pthread_cancel(heartbeat[1]);
+		/* Interrupt DATA_SERVER */
+		kill(peer_id, SIGINT);
 		
-		/*Sends to Data Server a message saying it has crashed */
-		sendto(front_sock, "__GTHO__", strlen("__GTHO__") + 1, 0, (struct sockaddr *) &peer, sizeof(peer));
-		
+		/* Cleanup */	
 		close(front_sock);
+		close(listener);
 		exit(0);
 	}else{
 		printf("Unexpected signal\n");
@@ -96,7 +95,7 @@ void * keyboard_handler(void * arg){
  * This function returns listening socket on success
  * This function returns -1 if an error occurs */
 int server_init(socklen_t * addrlen){
-	int listener;
+	int listener, val;
 	struct sockaddr_in local_addr;
 
 	/* Create socket */
@@ -105,10 +104,13 @@ int server_init(socklen_t * addrlen){
 		return -1;
 	}
 
-	if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0){
+	val = 1;
+	if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (int *) &val, sizeof(int)) < 0){
 		perror("setsockopt(SO_REUSEADDR) failed");
+		close(listener);
 		return -1;
     }
+    
 	/* Create address */
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(LISTENER_PORT);
@@ -133,25 +135,24 @@ int main(int argc, char ** argv){
 	socklen_t addrlen;
 	pthread_t keyboard;
 	struct sigaction handle;
-	
+
 	/* Set up the structure to specify action when signals */
 	handle.sa_handler = sig_handler;
 	sigemptyset (&handle.sa_mask);
 	handle.sa_flags = 0;
 
-	
-	// pid_t call_data
+
 	key = 1;
 	sigaction(SIGINT, &handle, NULL);
 	
 	switch(argc){
 		case(1):
 			/* Program started by terminal */
-			switch(fork()){
-				case -1	:
+			switch(peer_id = fork()){
+				case(-1):
 					perror("Couldn't call data server");
 					exit(-1);
-				case 0:
+				case(0):
 					execl("./data_server", "./data_server", NULL);
 					perror("Front Server exec");
 				default:
@@ -164,6 +165,7 @@ int main(int argc, char ** argv){
 			if(strcmp(argv[1], "__front_server:fault__") == 0){
 				printf("Recovering Front Server\n");
 				key = 0;
+				peer_id = getppid();
 				break;
 			}
 		default:
@@ -173,17 +175,23 @@ int main(int argc, char ** argv){
 
 	front_sock = create_socket(FRONT, &peer);
 	if(front_sock == -1){
+		printf("Killing DATA server.\n");
+		kill(peer_id, SIGKILL);
 		exit(-1);
 	}
 
 	if(pthread_create(&heartbeat[0], NULL, heartbeat_recv, NULL) != 0){
 		perror("Creating heartbeat thread");
-		sig_handler(SIGINT);
+		printf("Killing DATA server.\n");
+		kill(peer_id, SIGKILL);
+		exit(-1);
 	}
 
 	if(pthread_create(&heartbeat[1], NULL, heartbeat_send, NULL) != 0){
 		perror("Creating heartbeat thread");
-		sig_handler(SIGINT);
+		printf("Killing DATA server.\n");
+		kill(peer_id, SIGKILL);
+		exit(-1);
 	}
 
 	if(key){

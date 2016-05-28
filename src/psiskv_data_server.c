@@ -20,7 +20,7 @@ struct sockaddr_un peer;
  * a clean shutdown of the server */
 void sig_handler(int sig_number){
 	if (sig_number == SIGINT){
-		printf("\nExiting cleanly\n");
+		printf("\nData Server: Exiting cleanly\n");
 		close(listener);
 		write_backup();
 		kv_delete_database(-1);
@@ -80,14 +80,9 @@ void * database_handler(void * arg){
 
 /*Function to check pulse of front server*/
 void * heartbeat_recv(void * arg){
-	char buffer[BUFFSIZE];
-
+	int dummy_value;
 	while(1){
-		recv(data_sock, buffer, BUFFSIZE, 0);
-		if(strcmp(buffer, "__GTHO__") == 0){
-			printf("Exiting Data Server aswell\n");
-			sig_handler(SIGINT);
-		}
+		recv(data_sock, &dummy_value, sizeof(int), 0);
 		count = 0;
 	}
 }
