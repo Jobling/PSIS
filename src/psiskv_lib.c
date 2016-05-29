@@ -18,7 +18,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sigaction handle;
 
 	int port = UDP_PORT;
-    
+
     /* Save front server ip and port */
     strcpy(restore_server_ip, kv_server_ip);
 	restore_server_port = kv_server_port;
@@ -89,7 +89,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
         perror("Setsockopt");
         return -1;
     }
-    
+
 	/* Send request for front server */
 	nbytes = sendto(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, addrlen);
 	if(nbytes <= 0){
@@ -105,7 +105,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
             printf("Front server is not responding.\n");
         else
             perror("Receiving reply");
-            
+
         close(kv_descriptor);
 		return -1;
 	}
@@ -313,6 +313,7 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
 	return_value = try_kv_write(kv_descriptor, key, value, value_length, kv_overwrite);
 
 	if(return_value == -1){
+		printf("Retrying...\n");
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){
@@ -329,6 +330,7 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	return_value = try_kv_read(kv_descriptor, key, value, value_length);
 
 	if(return_value == -1){
+		printf("Retrying...\n");
 		close(kv_descriptor);
         kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){
@@ -345,6 +347,7 @@ int kv_delete(int kv_descriptor, uint32_t key){
 	return_value = try_kv_delete(kv_descriptor, key);
 
 	if(return_value == -1){
+		printf("Retrying...\n");
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){

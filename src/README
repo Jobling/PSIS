@@ -19,3 +19,23 @@ information.
 If the program terminates abruptly, the "log" file will contain all relevant
 information to reconstruct the database. There will never be both a "backup" and
 a "log" files at the same time.
+
+--- / ---
+
+Relevant definitions:
+
+- interprocess.h
+-- defined the AF_UNIX socket location, used for the communication between
+front_server and data_server;
+-- defined TIMEOUT, variable used to assure fault tolerance;
+
+- database.h
+-- defined the prime number used as the dimension of the data structure: DATA_PRIME
+-- defined the name of the backup and log files, as well as their temporary names
+
+- psiskv_data_server.c
+-- defined number of threads on thread pool NUM_THREADS;
+-- defined number of clients that can wait on accept call BACKLOG;
+
+- psiskv_front_server.c
+-- defined listener port as indicated on project LISTENER_PORT;
