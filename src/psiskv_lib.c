@@ -73,7 +73,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	memset((void*)&server_addr, (int) '\0', sizeof(addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(kv_server_port);
-	addr.sin_addr = *a;
+	server_addr.sin_addr = *a;
 
 	addrlen = sizeof(server_addr);
 

@@ -24,9 +24,15 @@ void sig_handler(int sig_number){
 	if(pthread_self() == main_thread){
 		if(sig_number == SIGINT){
 			printf("\nData Server: Exiting cleanly\n");
+            
+            /* Interrupt FRONT_SERVER */
+			kill(peer_id, SIGINT);
+            
+            /* Cleanup */
 			close(listener);
 			write_backup();
 			kv_delete_database(-1);
+            
 			exit(0);
 		}else{
 			printf("Unexpected signal\n");
