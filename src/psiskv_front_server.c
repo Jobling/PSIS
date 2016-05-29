@@ -221,9 +221,9 @@ int main(int argc, char ** argv){
 	printf("Front server: UP\n");
 	while(1){
 		nbytes = recvfrom(listener, &ignore, sizeof(int), 0, (struct sockaddr *) &client, &addrlen);
-		if(nbytes > 0){
+        if(nbytes > 0){
 			nbytes = sendto(listener, &data_listener, sizeof(int), 0, (struct sockaddr *) &client, addrlen);
-			if(nbytes <= 0){
+            if(nbytes <= 0){
 				perror("Sending replies");
 				exit(-1);
 			}

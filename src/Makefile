@@ -10,19 +10,22 @@ DATA_SERVER_OBJ = interprocess.o psiskv_data_server_lib.o psiskv_database.o comm
 
 ######### Make all targets ##########
 
-all: clean objects client data_server front_server
+all: clean objects client server
 
 run: all
 	@./front_server
 
 ######### Main objects for program usage #############
 # client: program used for client side               #
-# server: main server program                        #
+# server: main server programs						 #
+# front_server: front server program  				 #
 # data_server: data server program (child of server) #
 ######################################################
 
 client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
+
+server: data_server front_server
 
 front_server: psiskv_front_server.c $(FRONT_SERVER_OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
@@ -48,7 +51,7 @@ test:
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 %: %.c psiskv_lib.o $(DEPS)
-	$(CC) -o $@ $< $(CFLAGS)
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS)
 
 ########## Auxiliary commands: ##########
 # git_push: commits and pushes files    #
@@ -68,6 +71,6 @@ git_push: clean
 	@git commit -a
 	@git push
 
-# Rule declaring that <clean> and <edit> are not build targets (programs)
+# Rule declaring that other rules are not build targets (programs)
 
-.PHONY: all run objects clean edit git_push
+.PHONY: all run objects clean edit git_push client server front_server data_server

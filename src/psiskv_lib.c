@@ -1,6 +1,6 @@
 #include "psiskv_lib.h"
 
-char restore_server_ip[BUFFSIZE];
+char restore_server_ip[_BUFFSIZE_];
 int restore_server_port;
 
 /* This function establishes connection with a Key-value store.
@@ -9,14 +9,19 @@ int restore_server_port;
  * This function returns -1 in case of error */
 int kv_connect(char * kv_server_ip, int kv_server_port){
 	int kv_descriptor, nbytes;
-	char ip[BUFFSIZE];
+	char ip[_BUFFSIZE_];
 	struct hostent * h;
 	struct in_addr * a;
 	struct sockaddr_in addr, server_addr;
+    struct timeval timeout;
 	socklen_t addrlen;
 	struct sigaction handle;
 
 	int port = UDP_PORT;
+    
+    /* Save front server ip and port */
+    strcpy(restore_server_ip, kv_server_ip);
+	restore_server_port = kv_server_port;
 
 	/* Set up the structure to specify action for SIGPIPE */
 	sigemptyset(&handle.sa_mask);
@@ -34,7 +39,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	}
 
 	/* Find client address */
-	gethostname(ip, BUFFSIZE);
+	gethostname(ip, _BUFFSIZE_);
 	if((h = gethostbyname(ip)) == NULL){
 		close(kv_descriptor);
 		return -1;
@@ -77,6 +82,14 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 
 	addrlen = sizeof(server_addr);
 
+    /* Setting timeout */
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
+    if(setsockopt(kv_descriptor, SOL_SOCKET, SO_RCVTIMEO, (void *) &timeout, sizeof(timeout)) < 0){
+        perror("Setsockopt");
+        return -1;
+    }
+    
 	/* Send request for front server */
 	nbytes = sendto(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, addrlen);
 	if(nbytes <= 0){
@@ -88,8 +101,12 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	/* Receive Reply from front server (with data server port) */
 	nbytes = recvfrom(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, &addrlen);
 	if(nbytes <= 0){
-		perror("Receiving reply");
-		close(kv_descriptor);
+        if(errno == EAGAIN || errno == EWOULDBLOCK)
+            printf("Front server is not responding.\n");
+        else
+            perror("Receiving reply");
+            
+        close(kv_descriptor);
 		return -1;
 	}
 
@@ -115,16 +132,15 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		return -1;
 	}
 
-	strcpy(restore_server_ip, kv_server_ip);
-	restore_server_port = kv_server_port;
-
 	return kv_descriptor;
 }
 
 /* This function closes a previously opened key-value store's connection */
 void kv_close(int kv_descriptor){
-	if(close(kv_descriptor))
-		perror("Close");
+    if(kv_descriptor != -1){
+        if(close(kv_descriptor))
+            perror("Close");
+    }
 	return;
 }
 
@@ -241,7 +257,8 @@ int try_kv_read(int kv_descriptor, uint32_t key, char * value, int value_length)
 			return -1;
 		default:
             buffer_size = (msg.data_length <= value_length) ? msg.data_length:value_length;
-            memcpy(value, buffer, buffer_size);
+            memcpy(value, buffer, buffer_size - 1);
+            value[buffer_size - 1] = '\0';
 			free(buffer);
             return nbytes;
 	}
@@ -299,7 +316,6 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){
-			printf("Trying again...\n");
 			return try_kv_write(kv_descriptor, key, value, value_length, kv_overwrite);
 		}else return -1;
 	}
@@ -314,9 +330,8 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 
 	if(return_value == -1){
 		close(kv_descriptor);
-		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
+        kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){
-			printf("Trying again...\n");
 			return try_kv_read(kv_descriptor, key, value, value_length);
 		}else return -1;
 	}
@@ -333,7 +348,6 @@ int kv_delete(int kv_descriptor, uint32_t key){
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
 		if(kv_descriptor > 0){
-			printf("Trying again...\n");
 			return try_kv_delete(kv_descriptor, key);
 		}else return -1;
 	}
