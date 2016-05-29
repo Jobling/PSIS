@@ -15,9 +15,9 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	struct sockaddr_in addr, server_addr;
 	socklen_t addrlen;
 	struct sigaction handle;
-	
+
 	int port = UDP_PORT;
-	
+
 	/* Set up the structure to specify action for SIGPIPE */
 	sigemptyset(&handle.sa_mask);
 	handle.sa_flags = 0;
@@ -26,29 +26,29 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		perror("Sigaction SIGPIPE");
 		exit(-1);
 	}
-	
+
 	/*	Create UDP socket */
 	if((kv_descriptor = socket(AF_INET, SOCK_DGRAM, 0)) == -1){
 		perror("Socket");
 		return -1;
 	}
-	
+
 	/* Find client address */
 	gethostname(ip, BUFFSIZE);
 	if((h = gethostbyname(ip)) == NULL){
 		close(kv_descriptor);
 		return -1;
-	}	
-	
+	}
+
 	a = (struct in_addr *) h->h_addr_list[0];
-	
+
 	/* Create client address */
 	memset((void*)&addr,(int) '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr = *a;
 	while(1){
 		addr.sin_port = htons(port);
-		
+
 		/* Bind client address */
 		if(bind(kv_descriptor, (const struct sockaddr *) &addr, sizeof(addr)) == -1){
 			if(errno != EADDRINUSE){
@@ -57,18 +57,18 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 				return -1;
 			}
 		}else break;
-		
+
 		port++;
 	}
-	
+
 	/* Find front server address */
 	if((h = gethostbyname(kv_server_ip)) == NULL){
 		close(kv_descriptor);
 		return -1;
-	}	
-	
+	}
+
 	a = (struct in_addr *) h->h_addr_list[0];
-	
+
 	/* Create front server address */
 	memset((void*)&server_addr, (int) '\0', sizeof(addr));
 	server_addr.sin_family = AF_INET;
@@ -76,7 +76,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 	addr.sin_addr = *a;
 
 	addrlen = sizeof(server_addr);
-	
+
 	/* Send request for front server */
 	nbytes = sendto(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, addrlen);
 	if(nbytes <= 0){
@@ -84,7 +84,7 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		close(kv_descriptor);
 		return -1;
 	}
-	
+
 	/* Receive Reply from front server (with data server port) */
 	nbytes = recvfrom(kv_descriptor, &kv_server_port, sizeof(int), 0, (struct sockaddr *) &server_addr, &addrlen);
 	if(nbytes <= 0){
@@ -92,15 +92,15 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		close(kv_descriptor);
 		return -1;
 	}
-	
+
 	/* Close Front Server socket */
 	close(kv_descriptor);
-	
+
 	if(kv_server_port == -1){
 		printf("Data server offline.\n");
 		return -1;
 	}
-	
+
 	/* Create TCP socket  */
 	if((kv_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		perror("Socket");
@@ -114,10 +114,10 @@ int kv_connect(char * kv_server_ip, int kv_server_port){
 		close(kv_descriptor);
 		return -1;
 	}
-	
+
 	strcpy(restore_server_ip, kv_server_ip);
 	restore_server_port = kv_server_port;
-	
+
 	return kv_descriptor;
 }
 
@@ -141,7 +141,7 @@ void kv_close(int kv_descriptor){
 int try_kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, int kv_overwrite){
 	message msg;
 	int nbytes;
-	
+
 
 	/* Creating message header */
 	msg.operation = (kv_overwrite) ? KV_OVERWRITE : KV_WRITE;
@@ -229,7 +229,7 @@ int try_kv_read(int kv_descriptor, uint32_t key, char * value, int value_length)
                     break;
             }
     }
-    
+
 	/* Receive the actual content */
 	nbytes = kv_recv(kv_descriptor, buffer, msg.data_length);
 	switch(nbytes){
@@ -292,9 +292,9 @@ int try_kv_delete(int kv_descriptor, uint32_t key){
 /*####################### FAULT TOLERANCE ##########################*/
 int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, int kv_overwrite){
 	int return_value;
-	
+
 	return_value = try_kv_write(kv_descriptor, key, value, value_length, kv_overwrite);
-	
+
 	if(return_value == -1){
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
@@ -303,15 +303,15 @@ int kv_write(int kv_descriptor, uint32_t key, char * value, int value_length, in
 			return try_kv_write(kv_descriptor, key, value, value_length, kv_overwrite);
 		}else return -1;
 	}
-	
+
 	return return_value;
 }
 
 int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 	int return_value;
-	
+
 	return_value = try_kv_read(kv_descriptor, key, value, value_length);
-	
+
 	if(return_value == -1){
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
@@ -320,15 +320,15 @@ int kv_read(int kv_descriptor, uint32_t key, char * value, int value_length){
 			return try_kv_read(kv_descriptor, key, value, value_length);
 		}else return -1;
 	}
-	
+
 	return return_value;
 }
 
 int kv_delete(int kv_descriptor, uint32_t key){
 	int return_value;
-	
+
 	return_value = try_kv_delete(kv_descriptor, key);
-	
+
 	if(return_value == -1){
 		close(kv_descriptor);
 		kv_descriptor = kv_connect(restore_server_ip, restore_server_port);
@@ -337,7 +337,6 @@ int kv_delete(int kv_descriptor, uint32_t key){
 			return try_kv_delete(kv_descriptor, key);
 		}else return -1;
 	}
-	
+
 	return return_value;
 }
-
