@@ -1,0 +1,21 @@
+To compile the program simply type "$ make"
+
+To run the server, type "$ make run"
+Otherwise, after compiling, run the front_server executable with no arguments.
+
+To run the client, type "$ ./client"
+The client program automatically connects to the server, so if the server is not
+being run, the client will exit after a timeout of 5 seconds.
+
+--- / ---
+
+Auxiliar information:
+
+When the front_server is running (and reading from the terminal), if "print" is
+typed, the data_server will print the actual contents on the terminal.
+
+If the program terminates cleanly, the "backup" file will contain the database
+information.
+If the program terminates abruptly, the "log" file will contain all relevant
+information to reconstruct the database. There will never be both a "backup" and
+a "log" files at the same time.
