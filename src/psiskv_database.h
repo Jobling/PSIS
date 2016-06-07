@@ -12,7 +12,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define DATA_PRIME 211
+// #define DATA_PRIME 211
+#define DATA_PRIME 7
 
 #define DATABASE_EQUAL 0
 #define DATABASE_NOT_EQUAL 1

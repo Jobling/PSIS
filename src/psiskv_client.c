@@ -122,7 +122,7 @@ int main(int argc, char ** argv){
                     printf("Incorrect number of arguments.\n");
                 else
                     /* Reading from server */
-                    switch(kv_read(kv_socket, key, value, sizeof(value) + 1)){
+                    switch(kv_read(kv_socket, key, value, sizeof(value))){
                         case(-1):
                             kv_close(kv_socket);
                             exit(-1);

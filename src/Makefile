@@ -10,7 +10,7 @@ DATA_SERVER_OBJ = interprocess.o psiskv_data_server_lib.o psiskv_database.o comm
 
 ######### Make all targets ##########
 
-all: clean objects client data_server front_server
+all: clean objects client data_server front_server teste
 
 run: all
 	@./front_server
@@ -21,6 +21,9 @@ run: all
 # data_server: data server program (child of server) #
 ######################################################
 
+teste: teste.c $(CLIENT_OBJ) $(DEPS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+	
 client: psiskv_client.c $(CLIENT_OBJ) $(DEPS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
@@ -61,7 +64,7 @@ edit:
 	@$(EDITOR) *.h *.c Makefile &
 
 clean:
-	@rm -f data_server client front_server *.o
+	@rm -f data_server client front_server teste *.o
 	@echo "Cleaned."
 
 git_push: clean

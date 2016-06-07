@@ -73,12 +73,13 @@ void * database_handler(void * arg){
 		}
 	}
 	
+	free(arg);
 	return NULL;
 }
 
 /* Threaded service management function */
 void * database_worker(void * arg){
-	int sock_in;
+	int * sock_in;
 	struct sockaddr_in client_addr;
 	socklen_t addr_size = sizeof(client_addr);
 	
@@ -87,11 +88,14 @@ void * database_worker(void * arg){
 	while(1){
 		/* Accept connections */
 		*working = 0;
-		sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
+		sock_in = (int *) malloc(sizeof(int));
+		*sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
 		*working = 1;
 		
 		/* Work with client */
-		database_handler((void *) &sock_in);
+		database_handler((void *) sock_in);
+		
+		sock_in = NULL;
 	}
 }
 
@@ -129,12 +133,12 @@ void * heartbeat_send(void * arg){
 
 /* Function to manage database_threads */
 void * thread_handler(void * arg){
-	int i;
+	int i;	
 	int working[NUM_THREADS];
 	pthread_t demanded_thread;
 	pthread_t database_threads[NUM_THREADS];
 	
-	int sock_in;
+	int * sock_in;
 	struct sockaddr_in client_addr;
 	socklen_t addr_size = sizeof(client_addr);
 	
@@ -157,14 +161,16 @@ void * thread_handler(void * arg){
 		
 		if(i == NUM_THREADS){
 		/* If all threads are working, creat thread for one client */
-			sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
-	
-			if(pthread_create(&demanded_thread, NULL, database_handler, (void *) &sock_in) != 0){
+			sock_in = (int *) malloc(sizeof(int));
+			*sock_in = accept(listener, (struct sockaddr *) &client_addr, &addr_size);
+			
+			if(pthread_create(&demanded_thread, NULL, database_handler, (void *) sock_in) != 0){
 				perror("Creating database handler thread");
 				close(listener);
 				kv_delete_database(-1);
 				exit(-1);
 			}
+			sock_in = NULL;
 		}else{
 		/* Otherwise, sleep a bit */
 			sleep(1);
