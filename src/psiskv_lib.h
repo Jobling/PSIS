@@ -15,7 +15,7 @@
 #include "message.h"
 #include "comm_utils.h"
 
-#define BUFFSIZE 256
+#define _BUFFSIZE_ 256
 #define UDP_PORT 5000
 
 int kv_connect(char * kv_server_ip, int kv_server_port);

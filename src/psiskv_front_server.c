@@ -26,14 +26,14 @@ void sig_handler(int sig_number){
 	if(pthread_self() == main_thread){
 		if(sig_number == SIGINT){
 			printf("\nFront Server: Exiting cleanly\n");
-			
+
 			/* Interrupt DATA_SERVER */
 			kill(peer_id, SIGINT);
-			
-			/* Cleanup */	
+
+			/* Cleanup */
 			close(front_sock);
 			close(listener);
-			
+
 			exit(0);
 		}else{
 			printf("Unexpected signal\n");
@@ -58,8 +58,9 @@ void * heartbeat_send(void * arg){
 		count++;
 		if(count == TIMEOUT){
 			printf("Data server: DOWN\n");
-			switch(fork()){
+			switch(peer_id = fork()){
 				case(0):
+					printf("Recovering Data Server...\n");
 					execl("./data_server", "./data_server", NULL);
 					perror("Data Server exec");
 				case(-1):
@@ -113,7 +114,7 @@ int server_init(socklen_t * addrlen){
 		close(listener);
 		return -1;
     }
-    
+
 	/* Create address */
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(LISTENER_PORT);
@@ -125,7 +126,7 @@ int server_init(socklen_t * addrlen){
 		close(listener);
 		return -1;
 	}
-	
+
 	*addrlen = sizeof(local_addr);
 	return listener;
 }
@@ -137,19 +138,19 @@ int main(int argc, char ** argv){
 	pthread_t keyboard;
 	pthread_t heartbeat[2];
 	struct sigaction handle;
-	
+
 	main_thread = pthread_self();
-	
+
 	/* Set up the structure to specify action for signals */
 	sigemptyset(&handle.sa_mask);
 	handle.sa_flags = 0;
 
 	handle.sa_handler = sig_handler;
-	if(sigaction(SIGINT, &handle, NULL) == -1){ 
+	if(sigaction(SIGINT, &handle, NULL) == -1){
 		perror("Sigaction SIGPIPE");
 		exit(-1);
-	}	
-	
+	}
+
 	handle.sa_handler = SIG_IGN;
 	if(sigaction(SIGPIPE, &handle, NULL) == -1){
 		perror("Sigaction SIGPIPE");
@@ -175,7 +176,6 @@ int main(int argc, char ** argv){
 		case(2):
 			/* Program started by data_server after fault */
 			if(strcmp(argv[1], "__front_server:fault__") == 0){
-				printf("Recovering Front Server\n");
 				key = 0;
 				peer_id = getppid();
 				break;
@@ -212,7 +212,7 @@ int main(int argc, char ** argv){
 			exit(-1);
 		}
 	}
-	
+
 	listener = server_init(&addrlen);
 	if(listener == -1){
 		exit(-1);
@@ -221,9 +221,9 @@ int main(int argc, char ** argv){
 	printf("Front server: UP\n");
 	while(1){
 		nbytes = recvfrom(listener, &ignore, sizeof(int), 0, (struct sockaddr *) &client, &addrlen);
-		if(nbytes > 0){
+        if(nbytes > 0){
 			nbytes = sendto(listener, &data_listener, sizeof(int), 0, (struct sockaddr *) &client, addrlen);
-			if(nbytes <= 0){
+            if(nbytes <= 0){
 				perror("Sending replies");
 				exit(-1);
 			}

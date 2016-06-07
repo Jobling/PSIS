@@ -11,6 +11,8 @@
 #define DELETE 3
 #define EXIT 4
 
+#define SIZE 256
+
 int kv_socket;
 
 /* Handle SIGINT signal to perform
@@ -57,9 +59,9 @@ void print_interface(){
 }
 
 int main(int argc, char ** argv){
-    char input[BUFFSIZE];
-    char value[BUFFSIZE];
-    char command[BUFFSIZE];
+    char input[SIZE];
+    char value[SIZE];
+    char command[SIZE];
     uint32_t key;
     int arg_num;
 
@@ -72,7 +74,7 @@ int main(int argc, char ** argv){
 
     print_interface();
     while(1){
-        if(fgets(input, BUFFSIZE, stdin) == NULL){
+        if(fgets(input, SIZE, stdin) == NULL){
             perror("fgets");
             if(kv_socket != -1) kv_close(kv_socket);
             exit(-1);
@@ -129,7 +131,7 @@ int main(int argc, char ** argv){
                         case(-2):
                             break;
                         default:
-                            printf("KV_READ successful: %s\n", value);
+                            printf("KV_READ successful: %s (%d)\n", value, strlen(value));
                             break;
                     }
                 break;
